@@ -15,6 +15,8 @@ const dataUrl = (file:string) => new URL(file, DATA_ROOT).toString()
 const QURAN_FILES={uthmani:dataUrl('quran/arabic/quran-uthmani-min.txt'),simple:dataUrl('quran/arabic/quran-simple-clean.txt')} as const
 const PAGE_MAP=dataUrl('mushaf/page-map.json')
 const INDOPAK_PAGE_COUNT=610
+const PUBLIC_LAYOUT_API='https://api.quran.com/api/v4'
+const remotePagePromise=new Map<number,Promise<ApiVerse[]>>()
 let uthmaniPromise:Promise<Map<number,string[]>>|null=null
 let simplePromise:Promise<Map<number,string[]>>|null=null
 let pageMapPromise:Promise<PageStart[]>|null=null
@@ -80,10 +82,32 @@ export async function fetchChapterPages(chapterNumber:number,style:MushafApiStyl
  return {lookup_range:{from:firstKey,to:lastKey},pages,total_page:Object.keys(pages).length}
 }
 
-export async function fetchPage(pageNumber:number,style:MushafApiStyle,_config?:MushafApiConfig,_translationIds:number[]=[]):Promise<{verses:ApiVerse[]}>
+async function fetchRemotePage(page:number):Promise<ApiVerse[]>{
+ const cached=remotePagePromise.get(page); if(cached) return cached
+ const promise=(async()=>{
+  const url=`${PUBLIC_LAYOUT_API}/verses/by_page/${page}?mushaf=6&words=true&word_fields=page_number,line_number,text_indopak,verse_key,position`
+  const response=await fetch(url,{headers:{accept:'application/json'}})
+  if(!response.ok) throw new Error(`Public Mushaf layout API unavailable (${response.status})`)
+  const data=await response.json()
+  if(!Array.isArray(data?.verses)) throw new Error('Public Mushaf layout API returned no verses')
+  return data.verses as ApiVerse[]
+ })()
+ remotePagePromise.set(page,promise)
+ try{return await promise}catch(error){remotePagePromise.delete(page);throw error}
+}
+
+export async function fetchPage(pageNumber:number,style:MushafApiStyle,_config?:MushafApiConfig,_translationIds:number[]=[] ):Promise<{verses:ApiVerse[]}>
 {
- const [quran,pageMap]=await Promise.all([getQuran(style),getPageMap()])
  const page=Math.min(INDOPAK_PAGE_COUNT,Math.max(1,Math.floor(pageNumber)))
+ if(style==='indo-pak-muhammadi'){
+  try{
+   const remote=await fetchRemotePage(page)
+   return {verses:remote}
+  }catch(_error){
+   // Offline/GitHub Pages fallback: preserve the bundled page data.
+  }
+ }
+ const [quran,pageMap]=await Promise.all([getQuran(style),getPageMap()])
  const all=orderedVerses(quran);const index=new Map(all.map((verse,i)=>[verse.verseKey,i]))
  const current=pageMap[page-1],next=pageMap[page]
  const start=index.get(key(current.sura,current.aya))
