@@ -104,8 +104,7 @@ export async function createExportCompositor(options: ExportCompositorOptions) {
     ctx.clearRect(0, 0, width, height)
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, width, height)
-    options.drawMushaf(ctx, width, height)
-
+    try { options.drawMushaf(ctx, width, height) } catch { /* External Mushaf artwork may be canvas-tainted; keep the live DOM preview running. */ }
 
     if (options.translations?.length) {
       const blockWidth = safeWidth * 0.9 * (visual.translationScale / 100)
