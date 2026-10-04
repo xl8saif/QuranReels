@@ -5,7 +5,7 @@ export type ApiTranslation = { resource_id?:number; text:string; language_name?:
 export type ApiVerse = { verse_key:string; verse_number:number; page_number:number; text_uthmani?:string; text_indopak?:string; text_qpc_hafs?:string; words?:ApiWord[]; translations?:ApiTranslation[] }
 export type MushafPageBoundary = { from:string; to:string; first_verse_key:string; last_verse_key:string }
 export type PagesLookupResponse = { lookup_range:{from:string;to:string}; pages:Record<string,MushafPageBoundary>; total_page:number }
-type PageStart = { page:number; sura:number; aya:number }
+type PageStart = { page:number; sura:number; aya:number; from?:string; to?:string }
 
 export function getMushafId(style:MushafApiStyle){ return style==='indo-pak-muhammadi'?6:4 }
 
@@ -31,8 +31,9 @@ async function loadPageMap(){
  const response=await fetch(PAGE_MAP,{headers:{accept:'application/json'}})
  if(!response.ok) throw new Error(`Bundled Mushaf page map unavailable (${response.status})`)
  const data=await response.json()
- if(!Array.isArray(data)||data.length!==INDOPAK_PAGE_COUNT) throw new Error(`Invalid bundled Mushaf page map (${Array.isArray(data)?data.length:'unknown'} pages)`)
- return data.map((item:PageStart)=>({page:Number(item.page),sura:Number(item.sura),aya:Number(item.aya)})).sort((a,b)=>a.page-b.page)
+ const rows=Array.isArray(data) ? data : data?.pages
+ if(!Array.isArray(rows)||rows.length!==INDOPAK_PAGE_COUNT) throw new Error(`Invalid bundled Mushaf page map (${Array.isArray(rows)?rows.length:'unknown'} pages)`)
+ return rows.map((item:PageStart & {from?:string;to?:string})=>({page:Number(item.page),sura:Number(item.sura),aya:Number(item.aya),from:item.from,to:item.to})).sort((a,b)=>a.page-b.page)
 }
 
 function getQuran(style:MushafApiStyle){if(style==='indo-pak-muhammadi'){simplePromise ||= loadQuran(QURAN_FILES.simple);return simplePromise}uthmaniPromise ||= loadQuran(QURAN_FILES.uthmani);return uthmaniPromise}
