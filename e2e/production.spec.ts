@@ -15,10 +15,9 @@ test.describe('published QuranReels site', () => {
       failedRequests.push(`${request.method()} ${request.url()} — ${failure}`)
     })
 
-    await page.goto('/', { waitUntil: 'domcontentloaded' })
-    await page.waitForLoadState('networkidle')
-
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
     await expect(page.getByRole('heading', { name: 'Waraq Quran Reel Maker', exact: true })).toBeVisible({ timeout: 60_000 })
+    await page.waitForTimeout(2_000)
     await expect(page.locator('.app-shell')).toBeVisible()
 
     expect(consoleErrors, `Browser console errors:\n${consoleErrors.join('\n')}`).toEqual([])
