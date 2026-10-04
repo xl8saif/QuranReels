@@ -1,0 +1,14 @@
+[
+  {
+    "line_number": 1,
+    "start_time": 0.0,
+    "end_time": 12.5,
+    "bounding_box": { "x": 100, "y": 150, "width": 800, "height": 60 }
+  },
+  {
+    "line_number": 2,
+    "start_time": 12.5,
+    "end_time": 24.8,
+    "bounding_box": { "x": 100, "y": 230, "width": 800, "height": 60 }
+  }
+]
