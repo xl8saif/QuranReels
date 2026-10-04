@@ -34,3 +34,11 @@
 @media(max-width:600px){.reciter-fixed{font-size:9px;overflow:hidden;text-overflow:ellipsis;max-width:70vw}}
 
 .quran-live-page{overflow-y:auto;scroll-behavior:smooth;scrollbar-width:none}.quran-live-page::-webkit-scrollbar{display:none}.live-quran-lines{padding:18px 10px 40px;min-height:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:12px}.live-quran-line{flex:none;min-height:42px;padding:5px 8px;border-radius:6px;white-space:normal;line-height:2.05}.live-quran-line.active-line{background:color-mix(in srgb,var(--highlight,#d9bd63) 24%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--highlight,#d9bd63) 30%,transparent)}
+
+
+/* Real Mushaf page presentation: image only, no rendered Quran text layer. */
+.image-mushaf-page{display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0;background:#111}
+.real-mushaf-image{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;background:#f5efdc}
+.image-mushaf-page .live-page-number{position:absolute;left:8px;bottom:6px;margin:0;padding:2px 5px;border-radius:4px;background:#0008;color:#fff;z-index:5}
+.minimal-page{height:34px;min-width:150px;justify-content:center;padding:0 9px;background:#151b23;border:1px solid #2a3440;border-radius:6px;color:#87929e;font-size:9px}
+.minimal-page strong{display:block;font-size:11px;color:#e5e9ed}
