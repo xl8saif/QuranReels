@@ -48,6 +48,15 @@ function orderedVerses(quran:Map<number,string[]>){
 
 function makeWords(text:string,verseKey:string,pageNumber:number,lineNumber:number,indopak=false):ApiWord[]{return text.split(/\s+/).filter(Boolean).map((word,index)=>({id:index+1,position:index+1,verse_key:verseKey,page_number:pageNumber,line_number:lineNumber,text_uthmani:indopak?undefined:word,text_qpc_hafs:indopak?undefined:word,text_indopak:indopak?word:undefined}))}
 
+export async function getChapterStartPage(chapterNumber:number,style:MushafApiStyle):Promise<number>{
+ const [quran,pageMap]=await Promise.all([getQuran(style),getPageMap()])
+ const all=orderedVerses(quran), index=new Map(all.map((verse,i)=>[verse.verseKey,i]))
+ const firstIndex=index.get(key(chapterNumber,1))
+ if(firstIndex===undefined) throw new Error(`Bundled Quran index missing surah ${chapterNumber}`)
+ const start=pageMap.reduce((best,item)=>{const i=index.get(key(item.sura,item.aya));return i!==undefined&&i<=firstIndex&&item.page>best.page?item:best},{page:1,sura:1,aya:1} as PageStart)
+ return start.page
+}
+
 export async function fetchChapterPages(chapterNumber:number,style:MushafApiStyle,_config?:MushafApiConfig):Promise<PagesLookupResponse>{
  const [quran,pageMap]=await Promise.all([getQuran(style),getPageMap()])
  const verses=quran.get(chapterNumber)||[];const ayahs=verses.slice(1).filter(Boolean).length
