@@ -14,6 +14,7 @@ const DATA_ROOT = new URL('data/', document.baseURI).toString()
 const dataUrl = (file:string) => new URL(file, DATA_ROOT).toString()
 const QURAN_FILES={uthmani:dataUrl('quran/arabic/quran-uthmani-min.txt'),simple:dataUrl('quran/arabic/quran-simple-clean.txt')} as const
 const PAGE_MAP=dataUrl('mushaf/page-map.json')
+const INDOPAK_PAGE_COUNT=610
 let uthmaniPromise:Promise<Map<number,string[]>>|null=null
 let simplePromise:Promise<Map<number,string[]>>|null=null
 let pageMapPromise:Promise<PageStart[]>|null=null
@@ -30,7 +31,7 @@ async function loadPageMap(){
  const response=await fetch(PAGE_MAP,{headers:{accept:'application/json'}})
  if(!response.ok) throw new Error(`Bundled Mushaf page map unavailable (${response.status})`)
  const data=await response.json()
- if(!Array.isArray(data)||data.length!==604) throw new Error(`Invalid bundled Mushaf page map (${Array.isArray(data)?data.length:'unknown'} pages)`)
+ if(!Array.isArray(data)||data.length!==INDOPAK_PAGE_COUNT) throw new Error(`Invalid bundled Mushaf page map (${Array.isArray(data)?data.length:'unknown'} pages)`)
  return data.map((item:PageStart)=>({page:Number(item.page),sura:Number(item.sura),aya:Number(item.aya)})).sort((a,b)=>a.page-b.page)
 }
 
@@ -72,7 +73,7 @@ export async function fetchChapterPages(chapterNumber:number,style:MushafApiStyl
 export async function fetchPage(pageNumber:number,style:MushafApiStyle,_config?:MushafApiConfig,_translationIds:number[]=[]):Promise<{verses:ApiVerse[]}>
 {
  const [quran,pageMap]=await Promise.all([getQuran(style),getPageMap()])
- const page=Math.min(604,Math.max(1,Math.floor(pageNumber)))
+ const page=Math.min(INDOPAK_PAGE_COUNT,Math.max(1,Math.floor(pageNumber)))
  const all=orderedVerses(quran);const index=new Map(all.map((verse,i)=>[verse.verseKey,i]))
  const current=pageMap[page-1],next=pageMap[page]
  const start=index.get(key(current.sura,current.aya))
