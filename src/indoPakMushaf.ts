@@ -25,7 +25,8 @@ export function indoPakPageImageUrl(page:number){
 export function loadIndoPakPage(page:number){
   return new Promise<HTMLImageElement>((resolve,reject)=>{
     const image = new Image()
-    image.crossOrigin = 'anonymous'
+    // GitHub Raw serves the Mushaf artwork for display; avoid forcing CORS mode here.
+    // A strict crossOrigin request can fail before the image reaches the play pane.
     image.onload = () => resolve(image)
     image.onerror = () => reject(new Error('Indo-Pak Mushaf page ' + page + ' image could not be loaded.'))
     image.src = indoPakPageImageUrl(page)
