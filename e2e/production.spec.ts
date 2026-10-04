@@ -44,11 +44,12 @@ test.describe('published QuranReels site', () => {
     }
     await expect(heading).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('.app-shell')).toBeVisible({ timeout: 30_000 })
-    await expect(page.locator('.minimal-preview')).toBeVisible({ timeout: 30_000 })
-    await expect(page.locator('.minimal-recitation')).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('.preview-card')).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('.recitation-card')).toBeVisible({ timeout: 30_000 })
     const mushafImage = page.locator('img.real-mushaf-image')
     await expect(mushafImage).toBeVisible({ timeout: 30_000 })
-    await expect(mushafImage).toBeVisible({ timeout: 30_000 })
+    await expect(mushafImage).toHaveJSProperty('complete', true)
+    await expect.poll(async () => await mushafImage.evaluate((img: HTMLImageElement) => img.naturalWidth), { timeout: 30_000 }).toBeGreaterThan(100)
     await expect(page.locator('audio#qvm-export-audio')).toHaveCount(1)
     await page.waitForTimeout(2_000)
 
