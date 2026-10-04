@@ -5,6 +5,7 @@ import { LiveMushafPreview } from './LiveMushafPreview'
 import { LiveRecitationControls } from './LiveRecitationControls'
 import { surahCatalog } from './surahCatalog'
 import { createAppRuntime } from './appRuntime'
+import { getChapterStartPage } from './mushafApi'
 import type { MushafStyleId } from './mushafStyles'
 import type { ExportPanelOptions } from './exportPanel'
 import './styles.css'
@@ -12,7 +13,9 @@ import './styles.css'
 function App(){
  const [surahNumber,setSurahNumber]=React.useState(1),[status,setStatus]=React.useState(''),[activeVerse,setActiveVerse]=React.useState(''),[exporting,setExporting]=React.useState(false),[exportProgress,setExportProgress]=React.useState(0),[exportUrl,setExportUrl]=React.useState<string|null>(null),[format,setFormat]=React.useState<'youtube-landscape'|'youtube-shorts'>('youtube-landscape')
  const exportCanvasRef=React.useRef<HTMLCanvasElement>(null),audioRef=React.useRef<HTMLAudioElement>(null),runtimeRef=React.useRef(createAppRuntime())
- const selectedSurah=surahCatalog.find(s=>s.number===surahNumber)??surahCatalog[0],mushafStyle:MushafStyleId='indo-pak-muhammadi',firstPage=surahNumber===1?1:2
+ const selectedSurah=surahCatalog.find(s=>s.number===surahNumber)??surahCatalog[0],mushafStyle:MushafStyleId='indo-pak-muhammadi'
+ const [firstPage,setFirstPage]=React.useState(1)
+ React.useEffect(()=>{let cancelled=false;setStatus('Loading Mushaf page…');void getChapterStartPage(surahNumber,mushafStyle).then(p=>{if(!cancelled)setFirstPage(p)}).catch(e=>{if(!cancelled)setStatus(e instanceof Error?e.message:'Unable to resolve Surah Mushaf page.')});return()=>{cancelled=true}},[surahNumber,mushafStyle])
  React.useEffect(()=>()=>{runtimeRef.current.destroy();if(exportUrl)URL.revokeObjectURL(exportUrl)},[exportUrl])
  React.useEffect(()=>runtimeRef.current.subscribe(state=>{setExporting(state.status==='recording');setExportProgress(state.progress);if(state.blobUrl)setExportUrl(previous=>{if(previous&&previous!==state.blobUrl)URL.revokeObjectURL(previous);return state.blobUrl??null});if(state.status==='error')setStatus(state.error||'Export failed')}),[])
  React.useEffect(()=>runtimeRef.current.setMedia({canvas:exportCanvasRef.current!,audio:audioRef.current}),[])
