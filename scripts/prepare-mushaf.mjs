@@ -19,16 +19,20 @@ with tempfile.TemporaryDirectory() as td:
         db = os.path.join(td, names[0])
     con = sqlite3.connect(db)
     try:
-        tables = {row[0] for row in con.execute("select name from sqlite_master where type='table'")}
-        if 'pages' not in tables or 'words' not in tables: raise SystemExit('Qudratullah database must contain pages and words tables')
-        page_rows = con.execute("select distinct page_number from pages order by page_number").fetchall()
+        tables = [row[0] for row in con.execute("select name from sqlite_master where type='table'")]
+        def columns(table):
+            return {row[1] for row in con.execute(f"pragma table_info({table})")}
+        page_table = next((t for t in tables if {'page_number','line_number','first_word_id','last_word_id'}.issubset(columns(t))), None)
+        word_table = next((t for t in tables if {'word_index','word_key'}.issubset(columns(t))), None)
+        if not page_table or not word_table: raise SystemExit(f'Unable to locate Qudratullah page/word tables. Tables: {tables}')
+        page_rows = con.execute(f"select distinct page_number from {page_table} order by page_number").fetchall()
         result=[]
         for (page,) in page_rows:
-            ids = con.execute("select first_word_id,last_word_id from pages where page_number=? and line_type='ayah' and first_word_id is not null and last_word_id is not null order by line_number", (page,)).fetchall()
+            ids = con.execute(f"select first_word_id,last_word_id from {page_table} where page_number=? and first_word_id is not null and last_word_id is not null order by line_number", (page,)).fetchall()
             if not ids: continue
             first_id=min(int(r[0]) for r in ids); last_id=max(int(r[1]) for r in ids)
-            first = con.execute("select word_key from words where word_index=?", (first_id,)).fetchone()
-            last = con.execute("select word_key from words where word_index=?", (last_id,)).fetchone()
+            first = con.execute(f"select word_key from {word_table} where word_index=?", (first_id,)).fetchone()
+            last = con.execute(f"select word_key from {word_table} where word_index=?", (last_id,)).fetchone()
             if not first or not last: raise SystemExit(f'Missing word boundary for page {page}: {first_id}-{last_id}')
             fs,fa=map(int,str(first[0]).split(':')[:2]); ls,la=map(int,str(last[0]).split(':')[:2])
             result.append({'page':int(page),'sura':fs,'aya':fa,'last_sura':ls,'last_aya':la})
