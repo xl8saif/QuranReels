@@ -52,13 +52,15 @@ jobs:
             echo "Checking published site (attempt $attempt/18): $PLAYWRIGHT_BASE_URL"
             status=$(curl --silent --show-error --location --max-time 5 -o /tmp/quranreels-page.html -w "%{http_code}" "$PLAYWRIGHT_BASE_URL" || true)
             echo "HTTP status: $status"
-            if [ "$status" = "200" ] && grep -q "Waraq Quran Reels" /tmp/quranreels-page.html; then
-              echo "GitHub Pages is serving the expected application."
+            if [ "$status" = "200" ] \
+              && grep -q 'id="root"' /tmp/quranreels-page.html \
+              && grep -Eq '<script[^>]+type="module"[^>]+src="[^"]+"' /tmp/quranreels-page.html; then
+              echo "GitHub Pages is serving the expected application shell."
               exit 0
             fi
             sleep 5
           done
-          echo "GitHub Pages did not publish the expected application within the bounded wait."
+          echo "GitHub Pages did not publish a usable application shell within the bounded wait."
           exit 1
 
       - name: Install Playwright
