@@ -1,14 +1,14 @@
 import React from 'react'
-import { fetchChapterPages } from './mushafApi'
-import { createExportCompositor } from './exportCompositor'
-import { LiveRecitationControls } from './LiveRecitationControls'
 import { loadIndoPakPage } from './indoPakMushaf'
+import { createExportCompositor } from './exportCompositor'
+import { fetchChapterPages } from './mushafApi'
 import { type MushafStyleId } from './mushafStyles'
 
 type Props = {
   styleId: MushafStyleId
   page: number
   chapterNumber?: number
+  activeVerse?: string
   highlight: string
   showFinger?: boolean
   autoScroll?: boolean
@@ -22,9 +22,8 @@ function verseNumber(key:string){
   return (sura || 0)*1000+(ayah || 0)
 }
 
-function AppPage({ page, chapterNumber=1, onStatus, exportCanvasRef }:Props){
+function AppPage({ page, chapterNumber=1, activeVerse='', onStatus, exportCanvasRef }:Props){
   const [displayPage,setDisplayPage]=React.useState(page || 1)
-  const [activeVerse,setActiveVerse]=React.useState('')
   const [error,setError]=React.useState('')
   const [loading,setLoading]=React.useState(true)
   const imageRef=React.useRef<HTMLImageElement|null>(null)
@@ -38,13 +37,11 @@ function AppPage({ page, chapterNumber=1, onStatus, exportCanvasRef }:Props){
     void fetchChapterPages(chapterNumber,'indo-pak-muhammadi').then(result=>{
       if(cancelled)return
       const key=verseNumber(activeVerse)
-      const match=Object.entries(result.pages).find(([,boundary])=>{
-        return key>=verseNumber(boundary.from) && key<=verseNumber(boundary.to)
-      })
+      const match=Object.entries(result.pages).find(([,boundary])=>key>=verseNumber(boundary.from)&&key<=verseNumber(boundary.to))
       if(match)setDisplayPage(Number(match[0]))
-    }).catch(()=>undefined)
+    }).catch(errorValue=>onStatus?.(errorValue instanceof Error ? errorValue.message : 'Unable to synchronize Mushaf page.'))
     return()=>{cancelled=true}
-  },[activeVerse,chapterNumber])
+  },[activeVerse,chapterNumber,onStatus])
 
   React.useEffect(()=>{
     let cancelled=false
@@ -79,39 +76,20 @@ function AppPage({ page, chapterNumber=1, onStatus, exportCanvasRef }:Props){
     if(!canvas || !imageRef.current)return
     compositorRef.current?.destroy()
     compositorRef.current=null
-    void createExportCompositor({
-      canvas,
-      width:canvas.width || 1920,
-      height:canvas.height || 1080,
-      drawMushaf
-    }).then(compositor=>{ compositorRef.current=compositor })
+    void createExportCompositor({canvas,width:canvas.width||1920,height:canvas.height||1080,drawMushaf})
+      .then(compositor=>{compositorRef.current=compositor})
       .catch(errorValue=>onStatus?.(errorValue instanceof Error ? errorValue.message : 'Export renderer failed.'))
-    return()=>{
-      compositorRef.current?.destroy()
-      compositorRef.current=null
-    }
+    return()=>{compositorRef.current?.destroy();compositorRef.current=null}
   },[displayPage,drawMushaf,exportCanvasRef,onStatus,loading])
 
   return <div className="live-preview-shell">
     <div className="quran-live-page image-mushaf-page" dir="ltr">
       {loading && <div className="live-mushaf-state"><strong>Loading Mushaf page…</strong></div>}
       {!loading && error && <div className="live-mushaf-state error"><strong>Mushaf unavailable</strong><span>{error}</span></div>}
-      {!loading && !error && imageRef.current && (
-        <img
-          className="real-mushaf-image"
-          src={imageRef.current.src}
-          alt={'Indo-Pak Mushaf page '+displayPage}
-          draggable={false}
-        />
-      )}
+      {!loading && !error && imageRef.current && <img className="real-mushaf-image" src={imageRef.current.src} alt={'Indo-Pak Mushaf page '+displayPage} draggable={false}/>} 
       <div className="live-page-number">{displayPage}</div>
       <canvas ref={exportCanvasRef || undefined} width={1920} height={1080} aria-hidden="true" style={{position:'absolute',width:0,height:0,opacity:0,pointerEvents:'none'}} />
     </div>
-    <LiveRecitationControls
-      chapterNumber={chapterNumber}
-      onSync={(verse)=>setActiveVerse(verse)}
-      onStatus={onStatus}
-    />
   </div>
 }
 
