@@ -1,4 +1,4 @@
-const BASE = 'https://sachal2508.github.io/AL-Quran-App-Quran-Images/quran_15line'
+const BASE = 'https://raw.githubusercontent.com/Sachal2508/AL-Quran-App-Quran-Images/main/quran_15line'
 
 // Qudratullah 15-line image repository: 610 Quran pages grouped by Juz.
 // Counts are taken from the published image tree: 21, then 20 pages for Juz 2–15,
