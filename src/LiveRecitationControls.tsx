@@ -62,7 +62,6 @@ export function LiveRecitationControls({ chapterNumber, onSync, onStatus }: Prop
     return () => { cancelled = true }
   }, [chapterNumber, reciterId])
 
-  React.useEffect(() => { if (audioRef.current) { audioRef.current.playbackRate = speed; audioRef.current.dataset.qvmExportSpeed = String(speed) } }, [speed])
 
   const handleTime = (timeMs: number) => { setCurrentMs(timeMs); if (!audio) return; const active = findActiveTiming(audio.timestamps, timeMs); if (active.verseKey) onSync?.(active.verseKey, active.wordIndex, timeMs) }
   const durationMs = Math.max(audio?.timestamps.length ? timingDuration(audio.timestamps) : 0, audioRef.current?.duration ? audioRef.current.duration * 1000 : 0)
@@ -82,15 +81,11 @@ export function LiveRecitationControls({ chapterNumber, onSync, onStatus }: Prop
   return <div className="live-recitation-controls">
     <div className="recitation-row">
       <button className="primary" type="button" onClick={togglePlayback} disabled={!audio || loadingAudio} aria-label={playing ? 'Pause recitation' : 'Play recitation'}>{playing ? <Pause size={15}/> : <Play size={15}/>} {playing ? 'Pause' : 'Play'}</button>
-      <select value={reciterId} disabled={loadingReciters || loadingAudio || !reciters.length} onChange={event => setReciterId(Number(event.target.value))} aria-label="Reciter">
-        {!reciters.length && <option value="">{loadingReciters ? 'Loading reciters…' : 'No reciters available'}</option>}
-        {reciters.map(reciter => <option key={reciter.id} value={reciter.id}>{reciter.reciter_name || reciter.name || `Reciter ${reciter.id}`}{reciter.arabic_name ? ` — ${reciter.arabic_name}` : ''}{reciter.style ? ` · ${reciter.style}` : ''}</option>)}
-      </select>
-      <select value={speed} onChange={event => setSpeed(Number(event.target.value))} aria-label="Playback speed">{SPEEDS.map(value => <option key={value} value={value}>{value}×</option>)}</select>
+      <span className="reciter-fixed">Ahmad Al-Ajmy · أحمد بن علي العجمي</span>
     </div>
     <input aria-label="Recitation progress" type="range" min="0" max="100" step="0.1" value={progress} disabled={!audio || !durationMs} onChange={event => seek(Number(event.target.value))}/>
     <audio id="qvm-export-audio" ref={audioRef} crossOrigin="anonymous" preload="metadata" onTimeUpdate={event => handleTime(event.currentTarget.currentTime * 1000)} onLoadedMetadata={() => setError('')} onError={() => { setPlaying(false); setError('This recitation could not be played. Choose another reciter.'); statusRef.current?.('Recitation audio failed to play') }} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); handleTime(durationMs) }} />
-    <small className="hint">{error || (loadingAudio ? 'Loading Surah recitation…' : audio ? `${formatTime(currentMs)} / ${formatTime(durationMs)} · ${speed}×` : 'Select a reciter')}</small>
+    <small className="hint">{error || (loadingAudio ? 'Loading Ahmad Al-Ajmy recitation…' : audio ? `${formatTime(currentMs)} / ${formatTime(durationMs)}` : 'Recitation unavailable')}</small>
   </div>
 }
 
@@ -99,4 +94,28 @@ function formatTime(milliseconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
+}  React.useEffect(() => {
+    let cancelled = false
+    setLoadingAudio(true); setError(''); setPlaying(false); setCurrentMs(0); audioRef.current?.pause()
+    void fetchChapterAudio(AHMAD_AL_AJMY_ID, chapterNumber, undefined, true).then(result => {
+      if (cancelled) return
+      if (!result.audioUrl) throw new Error('No Ahmad Al-Ajmy recitation is available for this Surah.')
+      setAudio(result)
+      if (audioRef.current) {
+        audioRef.current.src = result.audioUrl
+        audioRef.current.playbackRate = 1
+        audioRef.current.dataset.qvmExportSpeed = '1'
+        audioRef.current.load()
+      }
+      statusRef.current?.('Ahmad Al-Ajmy recitation loaded')
+    }).catch(errorValue => {
+      if (!cancelled) {
+        setAudio(null)
+        setError(errorValue instanceof Error ? errorValue.message : 'Unable to load recitation.')
+        statusRef.current?.('Ahmad Al-Ajmy recitation unavailable')
+      }
+    }).finally(() => { if (!cancelled) setLoadingAudio(false) })
+    return () => { cancelled = true }
+  }, [chapterNumber])
+
+
