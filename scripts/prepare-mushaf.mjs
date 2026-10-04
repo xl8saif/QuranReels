@@ -10,10 +10,11 @@ const html = await response.text()
 
 // QUL publishes the complete 610-page Qudratullah table on this page.
 // Each row is rendered as: page | first-verse - last-verse | Ready | Preview.
-const pattern = /\|\s*(\d+)\s*\|\s*(\d+):(\d+)\s*-\s*(\d+):(\d+)\s*\|\s*Ready\s*\|/g
+const visible = html.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\\s+/g, ' ')
+const pattern = /(\\d+)\\s+(\\d+):(\\d+)\\s*-\\s*(\\d+):(\\d+)\\s+Ready/g
 const pages = []
 let match
-while ((match = pattern.exec(html)) !== null) {
+while ((match = pattern.exec(visible)) !== null) {
   pages.push({
     page: Number(match[1]),
     sura: Number(match[2]),
