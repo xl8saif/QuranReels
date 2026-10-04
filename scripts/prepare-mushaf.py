@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -37,7 +38,13 @@ def main() -> None:
     with urlopen(request, timeout=30) as response:
         html = response.read().decode("utf-8", errors="replace")
 
-    matches = list(ROW_RE.finditer(html))
+    parser = RowParser()
+    parser.feed(html)
+    matches = []
+    for cells in parser.rows:
+        match = ROW_RE.search(" | ".join(cells))
+        if match:
+            matches.append(match)
     if len(matches) != EXPECTED_PAGES:
         raise SystemExit(
             f"QUL returned {len(matches)} ready page rows; expected {EXPECTED_PAGES}. "
