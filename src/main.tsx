@@ -19,6 +19,7 @@ function App(){
  React.useEffect(()=>()=>{runtimeRef.current.destroy();if(exportUrl)URL.revokeObjectURL(exportUrl)},[exportUrl])
  React.useEffect(()=>runtimeRef.current.subscribe(state=>{setExporting(state.status==='recording');setExportProgress(state.progress);if(state.blobUrl)setExportUrl(previous=>{if(previous&&previous!==state.blobUrl)URL.revokeObjectURL(previous);return state.blobUrl??null});if(state.status==='error')setStatus(state.error||'Export failed')}),[])
  React.useEffect(()=>runtimeRef.current.setMedia({canvas:exportCanvasRef.current!,audio:audioRef.current}),[])
+ React.useEffect(()=>{const canvas=exportCanvasRef.current;if(!canvas)return;const [width,height]=format==='youtube-shorts'?[1080,1920]:[1920,1080];if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height},[format])
  React.useEffect(()=>setActiveVerse(''),[surahNumber])
  const startExport=()=>{const options:ExportPanelOptions={resolution:format,fps:30,mushafStyle,translationLanguage:'none',playbackSpeed:1,filename:`waraq-${selectedSurah.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${format==='youtube-shorts'?'9x16':'16x9'}.webm`};runtimeRef.current.startExport(options);setStatus('Creating video…')}
  return <div className="app-shell"><div className="ambient ambient-one"/><div className="ambient ambient-two"/>
