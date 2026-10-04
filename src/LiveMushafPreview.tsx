@@ -33,9 +33,10 @@ function AppPage({page,chapterNumber=1,activeVerse='',onStatus,exportCanvasRef,h
   ? (lineY==null?Math.max(0,Math.min(18,((activeLine-1)/14)*18)):Math.max(-18,Math.min(18,(lineY-50)*0.75)))
   : (lineY==null?Math.max(-30,Math.min(30,42-((activeLine-1)/14)*84)):Math.max(-30,Math.min(30,42-lineY*1.68)) )
  return <div className={'live-preview-shell '+(vertical?'vertical-preview':'landscape-preview')}><div className='quran-live-page image-mushaf-page' dir='ltr'>
- {loading&&<div className='live-mushaf-state'><strong>Loading Mushaf page…</strong></div>}
- {!loading&&error&&<div className='live-mushaf-state error'><strong>Mushaf unavailable</strong><span>{error}</span></div>}
- {!loading&&!error&&image&&<div className={'mushaf-image-stage '+(vertical?'mushaf-stage-vertical':'mushaf-stage-landscape')} style={{transform:vertical?'translateY(-'+pan+'%)':'translate(-50%,-'+(50+pan)+'%)'}}><img className='real-mushaf-image' src={imageRef.current.src} alt={'Indo-Pak Mushaf page '+displayPage} draggable={false}/><div className='active-line-highlight' style={{top:(lineY==null?((activeLine-1)/15)*100:lineY-3.2)+'%',height:'6.67%',background:highlight}}/></div>}
+ {loading&&!image&&<div className='live-mushaf-state'><strong>Loading Mushaf page…</strong></div>}
+ {loading&&image&&<div className='live-mushaf-loading'><span>Loading page {displayPage}…</span></div>}
+ {error&&!image&&<div className='live-mushaf-state error'><strong>Mushaf unavailable</strong><span>{error}</span></div>}
+ {image&&<div className={'mushaf-image-stage '+(vertical?'mushaf-stage-vertical':'mushaf-stage-landscape')} style={{transform:vertical?'translateY(-'+pan+'%)':'translate(-50%,-'+(50+pan)+'%)'}}><img className='real-mushaf-image' src={imageRef.current.src} alt={'Indo-Pak Mushaf page '+displayPage} draggable={false}/><div className='active-line-highlight' style={{top:(lineY==null?((activeLine-1)/15)*100:lineY-3.2)+'%',height:'6.67%',background:highlight}}/></div>}
  <div className='live-page-number'>{displayPage}</div><canvas ref={exportCanvasRef||undefined} width={1920} height={1080} aria-hidden='true' style={{position:'absolute',width:0,height:0,opacity:0,pointerEvents:'none'}}/></div></div>
 }
 export const LiveMushafPreview=React.memo(AppPage)
