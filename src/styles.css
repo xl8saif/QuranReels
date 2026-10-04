@@ -26,5 +26,5 @@ footer{position:relative;z-index:1;text-align:center;color:#65738a;font-size:8px
 @keyframes shinePulse{0%{filter:brightness(1) drop-shadow(0 0 3px rgba(255,255,255,.16))}100%{filter:brightness(1.45) drop-shadow(0 0 18px rgba(255,255,255,.34))}}
 @media(max-width:900px){.quranreels-title{font-size:clamp(28px,7vw,46px)}}
 @media(max-width:600px){.quranreels-title{font-size:clamp(26px,8vw,38px);letter-spacing:-.025em}.quranreels-subtitle{font-size:9px}}
-@media(prefers-reduced-motion:reduce){.quranreels-title{animation:none;filter:saturate(1.35) brightness(1.15);text-shadow:0 0 5px rgba(255,255,255,.5),0 0 14px rgba(0,184,255,.25)}.quranreels-title:after,.quranreels-title:before{display:none}.focused-title,.focused-title span{animation:none;transform:none;letter-spacing:-.04em}}
+@media(prefers-reduced-motion:reduce){.quranreels-title{animation:none;filter:none;text-shadow:0 0 5px rgba(255,255,255,.5),0 0 14px rgba(0,184,255,.25)}.quranreels-title:after,.quranreels-title:before{display:none}.focused-title{animation:none;transform:none}}
 .live-mushaf-loading{position:absolute;right:14px;top:14px;z-index:8;padding:6px 10px;border-radius:999px;background:rgba(8,12,20,.68);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);color:#d9e3f2;font-size:10px;pointer-events:none}
