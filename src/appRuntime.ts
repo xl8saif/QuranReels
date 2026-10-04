@@ -1,7 +1,7 @@
 import type { ExportPanelOptions, ExportPanelState } from './exportPanel'
 import { createCanvasAudioStreamController, type CanvasAudioStream } from './streamExporter'
 import { defaultMushafStyle } from './mushafStyles'
-import { getExportDurationMs, normalizeExportSpeed } from './exportTiming'
+import { getExportDurationMs } from './exportTiming'
 
 export interface AppRuntimeMedia { canvas: HTMLCanvasElement; audio: HTMLMediaElement | null }
 export interface AppRuntime { state: ExportPanelState; options:ExportPanelOptions; setMedia:(media:AppRuntimeMedia|null)=>void; startExport:(options:ExportPanelOptions)=>void; cancelExport:()=>void; subscribe:(listener:(state:ExportPanelState,options:ExportPanelOptions)=>void)=>()=>void; destroy:()=>void }
