@@ -1,6 +1,6 @@
 import React from 'react'
 import { Pause, Play } from 'lucide-react'
-import { fetchChapterAudio, fetchChapterRecitations, type Reciter } from './recitationApi'
+import { fetchChapterAudio } from './recitationApi'
 import { findActiveTiming, timingDuration, type ChapterAudioTiming } from './recitationTiming'
 import './liveRecitationControls.css'
 
