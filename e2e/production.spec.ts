@@ -60,7 +60,7 @@ test.describe('published QuranReels site', () => {
 
   test('Quran UI and primary controls are available', async ({ page }) => {
     await expect(page.getByText('Surah', { exact: true })).toBeVisible()
-    await expect(page.getByText('Mushaf', { exact: true })).toBeVisible()
+    await expect(page.getByText('Mushaf preview', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Create video', exact: true })).toBeVisible()
     const recitationRegion = page.getByRole('region', { name: 'Ahmad Al-Ajmy recitation' })
     await expect(recitationRegion.getByText('Ahmad Al-Ajmy', { exact: false }).first()).toBeVisible()
@@ -73,7 +73,7 @@ test.describe('published QuranReels site', () => {
     await expect(surah.locator('option')).toHaveCount(114)
     await surah.selectOption('2')
     await expect(surah).toHaveValue('2')
-    await expect(page.locator('.subtitle')).toContainText('البقرة')
+    await expect(page.locator('.preview-meta')).toContainText('البقرة')
   })
 
   test('Ahmad Al-Ajmy recitation controls load and expose the expected source', async ({ page }) => {
