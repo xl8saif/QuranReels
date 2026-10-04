@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "python3 scripts/prepare-recitation-timings.py && node scripts/prepare-mushaf.mjs && node scripts/prepare-local-fonts.mjs && vite",
+    "dev": "python3 scripts/prepare-recitation-timings.py && python3 scripts/prepare-mushaf.py && node scripts/prepare-local-fonts.mjs && vite",
     "test": "vitest run tests",
-    "build": "python3 scripts/prepare-recitation-timings.py && node scripts/prepare-mushaf.mjs && node scripts/prepare-local-fonts.mjs && vite build && printf 'data/recitations/timings.json\\n' > dist/.assetsignore",
+    "build": "python3 scripts/prepare-recitation-timings.py && python3 scripts/prepare-mushaf.py && node scripts/prepare-local-fonts.mjs && vite build && printf 'data/recitations/timings.json\\n' > dist/.assetsignore",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
