@@ -10,7 +10,7 @@ type PageStart = { page:number; sura:number; aya:number }
 export function getMushafId(style:MushafApiStyle){ return style==='indo-pak-muhammadi'?6:4 }
 
 // Resolve bundled data through Vite's base URL. Absolute /data paths 404 on GitHub Pages project sites.
-const DATA_ROOT = new URL('data/', import.meta.env.BASE_URL).toString()
+const DATA_ROOT = new URL('data/', document.baseURI).toString()
 const dataUrl = (file:string) => new URL(file, DATA_ROOT).toString()
 const QURAN_FILES={uthmani:dataUrl('quran/arabic/quran-uthmani-min.txt'),simple:dataUrl('quran/arabic/quran-simple-clean.txt')} as const
 const PAGE_MAP=dataUrl('mushaf/page-map.json')
