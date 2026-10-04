@@ -23,8 +23,22 @@ test.describe('published QuranReels site', () => {
     const response = await page.goto('./', { waitUntil: 'domcontentloaded', timeout: 30_000 })
     expect(response, 'Published site returned no navigation response').not.toBeNull()
     expect(response?.status(), 'Published site HTTP status').toBe(200)
-    await expect(page.locator('#root')).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByRole('heading', { name: 'Waraq Quran Reels', exact: true })).toBeVisible({ timeout: 30_000 })
+    await page.waitForTimeout(3_000)
+    const heading = page.getByRole('heading', { name: 'Waraq Quran Reels', exact: true })
+    if (!(await heading.isVisible().catch(() => false))) {
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      const scripts = await page.locator('script').evaluateAll(items => items.map(script => (script as HTMLScriptElement).src || script.textContent?.slice(0, 120)))
+      throw new Error([
+        'Published app did not render the Quran UI.',
+        `URL: ${page.url()}`,
+        `Body text: ${bodyText.slice(0, 1000)}`,
+        `Scripts: ${JSON.stringify(scripts)}`,
+        `Console errors: ${consoleErrors.join(' | ')}`,
+        `Page errors: ${pageErrors.join(' | ')}`,
+        `Failed/HTTP-error requests: ${failedRequests.join(' | ')}`,
+      ].join('\\n'))
+    }
+    await expect(heading).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('.app-shell')).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('.minimal-preview')).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('.minimal-recitation')).toBeVisible({ timeout: 30_000 })
