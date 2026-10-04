@@ -46,6 +46,11 @@ test.describe('published QuranReels site', () => {
     await expect(page.locator('.app-shell')).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('.minimal-preview')).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('.minimal-recitation')).toBeVisible({ timeout: 30_000 })
+    const mushafImage = page.locator('img.real-mushaf-image')
+    await expect(mushafImage).toBeVisible({ timeout: 30_000 })
+    await expect(mushafImage).toHaveAttribute('src', /quran_15line\/juz_1\/page_1\.jpg$/)
+    await expect(mushafImage.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0)
+    await expect(page.locator('audio#qvm-export-audio')).toHaveCount(1)
     await page.waitForTimeout(2_000)
 
     expect(consoleErrors, `Browser console errors:\n${consoleErrors.join('\n')}`).toEqual([])
