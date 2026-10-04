@@ -16,21 +16,7 @@ function AppPage({page,chapterNumber=1,activeVerse='',onStatus,exportCanvasRef,h
  React.useEffect(()=>{let cancelled=false;setLoading(true);setError('');void loadIndoPakPage(displayPage).then(nextImage=>{if(cancelled)return;imageRef.current=nextImage;setImage(nextImage);setLoading(false);onStatus?.('Indo-Pak Mushaf page '+displayPage+' loaded')}).catch(errorValue=>{if(cancelled)return;setLoading(false);setError(errorValue instanceof Error?errorValue.message:'Unable to load the Mushaf page image.')});return()=>{cancelled=true}},[displayPage,onStatus])
  const drawMushaf=React.useCallback((ctx:CanvasRenderingContext2D,width:number,height:number)=>{ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);const image=imageRef.current;if(!image)return;const landscape=width/Math.max(1,height)>1.2;if(!landscape){const scale=Math.min(width/image.naturalWidth,height/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;ctx.drawImage(image,(width-w)/2,(height-h)/2,w,h);return}const h=height*1.68,w=image.naturalWidth*(h/image.naturalHeight);const line=lineY==null?((activeLine-1)/14)*100:lineY;const desiredY=height*.58-(line/100)*h;const y=Math.max(height-h,Math.min(0,desiredY));const x=(width-w)/2;ctx.drawImage(image,x,y,w,h);const lineHeight=h/15;ctx.fillStyle='rgba(255,216,61,.34)';ctx.fillRect(x+w*.05,y+(line/100)*h-lineHeight*.42,w*.90,lineHeight*.84)},[activeLine,lineY])
  React.useEffect(()=>{const canvas=exportCanvasRef?.current;if(!canvas||!imageRef.current)return;compositorRef.current?.destroy();compositorRef.current=null;void createExportCompositor({canvas,width:canvas.width||1920,height:canvas.height||1080,drawMushaf}).then(compositor=>{compositorRef.current=compositor}).catch(errorValue=>onStatus?.(errorValue instanceof Error?errorValue.message:'Export renderer failed.'));return()=>{compositorRef.current?.destroy();compositorRef.current=null}},[displayPage,drawMushaf,exportCanvasRef,onStatus,loading])
- React.useEffect(()=>{const image=imageRef.current;if(!image||loading)return
-  try{
-   const canvas=document.createElement('canvas'),width=900,height=Math.max(1,Math.round(900*(image.naturalHeight/image.naturalWidth)))
-   canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)return
-   ctx.drawImage(image,0,0,width,height)
-   const x0=Math.floor(width*.08),x1=Math.ceil(width*.92),y0=Math.floor(height*.04),y1=Math.ceil(height*.96)
-   const scores:number[]=[]
-   for(let y=y0;y<y1;y+=2){const row=ctx.getImageData(x0,y,x1-x0,1).data;let dark=0;for(let i=0;i<row.length;i+=4){const lum=.299*row[i]+.587*row[i+1]+.114*row[i+2];if(lum<185)dark++}scores.push(dark/(row.length/4))}
-   const clusters:number[][]=[];let current:number[]=[]
-   scores.forEach((score,i)=>{if(score>.012){current.push(y0+i*2)}else if(current.length){clusters.push(current);current=[]}})
-   if(current.length)clusters.push(current)
-   const centers=clusters.map(c=>c.reduce((a,v)=>a+v,0)/c.length).filter((_,i)=>i<15)
-   if(centers.length>=activeLine){setLineY((centers[activeLine-1]/height)*100)}else setLineY(null)
-  }catch{setLineY(null)}
- },[displayPage,activeLine,loading])
+ React.useEffect(()=>{setLineY(null)},[displayPage])
  const pan=vertical
   ? (lineY==null?Math.max(0,Math.min(18,((activeLine-1)/14)*18)):Math.max(-18,Math.min(18,(lineY-50)*0.75)))
   : (lineY==null?Math.max(-30,Math.min(30,42-((activeLine-1)/14)*84)):Math.max(-30,Math.min(30,42-lineY*1.68)) )
