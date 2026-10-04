@@ -1,47 +1,32 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
-const root = resolve(process.cwd())
-const output = resolve(root, 'public/data/mushaf/page-map.json')
-const archive = resolve(root, 'public/data/mushaf/indopak/qudratullah-indopak-15-lines.db.zip')
+const output = resolve(process.cwd(), 'public/data/mushaf/page-map.json')
+const source = 'https://qul.tarteel.ai/mushaf_layouts/6'
 
-if (!existsSync(archive)) throw new Error(`Qudratullah Mushaf layout archive is missing: ${archive}`)
-mkdirSync(dirname(output), { recursive: true })
+const response = await fetch(source, { headers: { accept: 'text/html' } })
+if (!response.ok) throw new Error(`Unable to download QUL Qudratullah page map (${response.status})`)
+const html = await response.text()
 
-const python = String.raw`import json, os, sqlite3, sys, tempfile, zipfile
-archive, output = sys.argv[1], sys.argv[2]
-with tempfile.TemporaryDirectory() as td:
-    with zipfile.ZipFile(archive) as z:
-        names = [n for n in z.namelist() if n.lower().endswith('.db')]
-        if not names: raise SystemExit('No SQLite database found in Mushaf archive')
-        z.extract(names[0], td)
-        db = os.path.join(td, names[0])
-    con = sqlite3.connect(db)
-    try:
-        tables = [row[0] for row in con.execute("select name from sqlite_master where type='table'")]
-        def columns(table):
-            return {row[1] for row in con.execute(f"pragma table_info({table})")}
-        page_table = next((t for t in tables if {'page_number','line_number','first_word_id','last_word_id'}.issubset(columns(t))), None)
-        word_table = next((t for t in tables if {'word_index','word_key'}.issubset(columns(t))), None)
-        if not page_table or not word_table: raise SystemExit(f'Unable to locate Qudratullah page/word tables. Tables: {tables}')
-        page_rows = con.execute(f"select distinct page_number from {page_table} order by page_number").fetchall()
-        result=[]
-        for (page,) in page_rows:
-            ids = con.execute(f"select first_word_id,last_word_id from {page_table} where page_number=? and first_word_id is not null and last_word_id is not null order by line_number", (page,)).fetchall()
-            if not ids: continue
-            first_id=min(int(r[0]) for r in ids); last_id=max(int(r[1]) for r in ids)
-            first = con.execute(f"select word_key from {word_table} where word_index=?", (first_id,)).fetchone()
-            last = con.execute(f"select word_key from {word_table} where word_index=?", (last_id,)).fetchone()
-            if not first or not last: raise SystemExit(f'Missing word boundary for page {page}: {first_id}-{last_id}')
-            fs,fa=map(int,str(first[0]).split(':')[:2]); ls,la=map(int,str(last[0]).split(':')[:2])
-            result.append({'page':int(page),'sura':fs,'aya':fa,'last_sura':ls,'last_aya':la})
-        if len(result) != 610: raise SystemExit(f'Expected 610 Qudratullah pages, found {len(result)}')
-        # mushafApi needs the first verse of each page; keep last boundary metadata for validation/debugging.
-        with open(output,'w',encoding='utf-8') as f: json.dump(result,f,ensure_ascii=False,indent=2); f.write('\\n')
-    finally: con.close()
-`;
+// QUL publishes the complete 610-page Qudratullah table on this page.
+// Each row is rendered as: page | first-verse - last-verse | Ready | Preview.
+const pattern = /\|\s*(\d+)\s*\|\s*(\d+):(\d+)\s*-\s*(\d+):(\d+)\s*\|\s*Ready\s*\|/g
+const pages = []
+let match
+while ((match = pattern.exec(html)) !== null) {
+  pages.push({
+    page: Number(match[1]),
+    sura: Number(match[2]),
+    aya: Number(match[3]),
+    last_sura: Number(match[4]),
+    last_aya: Number(match[5]),
+  })
+}
 
-const result = spawnSync('python3', ['-c', python, archive, output], { stdio: 'inherit' })
-if (result.status !== 0) process.exit(result.status ?? 1)
-console.log('Generated verified Qudratullah 15-line Mushaf page map: 610 pages')
+pages.sort((a, b) => a.page - b.page)
+if (pages.length !== 610 || pages.some((item, index) => item.page !== index + 1)) {
+  throw new Error(`Invalid QUL Qudratullah page map: expected 610 sequential pages, found ${pages.length}`)
+}
+
+writeFileSync(output, JSON.stringify(pages, null, 2) + '\\n', 'utf8')
+console.log(`Generated verified Qudratullah 15-line Mushaf page map: ${pages.length} pages`)
