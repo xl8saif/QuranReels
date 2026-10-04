@@ -28,11 +28,12 @@ function AppPage({page,chapterNumber=1,activeVerse='',onStatus,exportCanvasRef,h
   if(current.length)clusters.push(current)
   const centers=clusters.map(c=>c.reduce((a,v)=>a+v,0)/c.length).filter((_,i)=>i<15)
   if(centers.length>=activeLine){setLineY((centers[activeLine-1]/height)*100)}else setLineY(null)
- },[displayPage,activeLine,loading]) const pan=lineY==null?Math.max(0,Math.min(18,((activeLine-1)/14)*18)):Math.max(-18,Math.min(18,(lineY-50)*0.75))
+ },[displayPage,activeLine,loading])
+ const pan=lineY==null?Math.max(0,Math.min(18,((activeLine-1)/14)*18)):Math.max(-18,Math.min(18,(lineY-50)*0.75))
  return <div className={'live-preview-shell '+(vertical?'vertical-preview':'')}><div className='quran-live-page image-mushaf-page' dir='ltr'>
  {loading&&<div className='live-mushaf-state'><strong>Loading Mushaf page…</strong></div>}
  {!loading&&error&&<div className='live-mushaf-state error'><strong>Mushaf unavailable</strong><span>{error}</span></div>}
- {!loading&&!error&&imageRef.current&&<div className='mushaf-image-stage' style={{transform:'translateY(-'+pan+'%)'}}><img className='real-mushaf-image' src={imageRef.current.src} alt={'Indo-Pak Mushaf page '+displayPage} draggable={false}/><div className='active-line-highlight' style={{top:((activeLine-1)/15)*100+'%',height:'6.67%',background:highlight}}/></div>}
+ {!loading&&!error&&imageRef.current&&<div className='mushaf-image-stage' style={{transform:'translateY(-'+pan+'%)'}}><img className='real-mushaf-image' src={imageRef.current.src} alt={'Indo-Pak Mushaf page '+displayPage} draggable={false}/><div className='active-line-highlight' style={{top:(lineY==null?((activeLine-1)/15)*100:lineY-3.2)+'%',height:'6.67%',background:highlight}}/></div>}
  <div className='live-page-number'>{displayPage}</div><canvas ref={exportCanvasRef||undefined} width={1920} height={1080} aria-hidden='true' style={{position:'absolute',width:0,height:0,opacity:0,pointerEvents:'none'}}/></div></div>
 }
 export const LiveMushafPreview=React.memo(AppPage)
