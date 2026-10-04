@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test('published Qudratullah map is exact and complete', async ({ page }) => {
+  await page.goto('./', { waitUntil: 'domcontentloaded' })
   const response = await page.request.get(new URL('data/mushaf/page-map.json', page.url()).toString())
   expect(response.ok()).toBeTruthy()
   const payload = await response.json()
