@@ -17,8 +17,8 @@ EXPECTED_PAGES = 610
 # boundaries from word volume. The page images remain the existing published
 # Qudratullah image source.
 ROW_RE = re.compile(
-    r'(?P<page>\d+)\s*\|\s*'
-    r'(?P<from>\d+:\d+)\s*-\s*(?P<to>\d+:\d+)\s*\|\s*Ready'
+    r'(?P<page>\d+)\s+(?P<from>\d+:\d+)\s+-\s+(?P<to>\d+:\d+)\s+Ready'
+    
 )
 
 
