@@ -83,6 +83,8 @@ export function createAppRuntime(): AppRuntime {
       'square': [1080, 1080],
     }
     const [width, height] = sizes[options.resolution] ?? sizes['1080p']
+    // Keep the capture surface explicitly aligned with the selected platform preset.
+    // YouTube landscape is always a real 1920×1080 canvas, not a CSS-scaled preview.
     canvas.width = width
     canvas.height = height
     streamController = createCanvasAudioStreamController(canvas, audio, options.fps)
