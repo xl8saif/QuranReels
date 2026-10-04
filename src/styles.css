@@ -29,3 +29,6 @@
 .spin{animation:minimal-spin .8s linear infinite}
 @keyframes minimal-spin{to{transform:rotate(360deg)}}
 @media(max-width:600px){.minimal-topbar{padding:0 10px}.minimal-topbar .title-block{display:block}.minimal-topbar h1{font-size:14px}.minimal-topbar .subtitle{font-size:9px}.minimal-workspace{padding:10px 8px 18px}.minimal-controls{grid-template-columns:1fr 1fr auto}.minimal-controls select{font-size:10px}.minimal-preview .quran-live-page{inset:3% 3%}}
+
+.reciter-fixed{font-size:10px;color:#9aa4ae;white-space:nowrap}
+@media(max-width:600px){.reciter-fixed{font-size:9px;overflow:hidden;text-overflow:ellipsis;max-width:70vw}}
