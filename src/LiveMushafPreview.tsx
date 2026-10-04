@@ -19,7 +19,7 @@ function AppPage({page,chapterNumber=1,activeVerse='',onStatus,exportCanvasRef,h
  React.useEffect(()=>{setLineY(null)},[displayPage])
  const pan=vertical
   ? (lineY==null?Math.max(0,Math.min(18,((activeLine-1)/14)*18)):Math.max(-18,Math.min(18,(lineY-50)*0.75)))
-  : (lineY==null?Math.max(-30,Math.min(30,42-((activeLine-1)/14)*84)):Math.max(-30,Math.min(30,42-lineY*1.68)) )
+  : (lineY==null?-29+((activeLine-1)/14)*18:Math.max(-30,Math.min(-10,-30+(lineY/100)*20)))
  return <div className={'live-preview-shell '+(vertical?'vertical-preview':'landscape-preview')}><div className='quran-live-page image-mushaf-page' dir='ltr'>
  {loading&&!image&&<div className='live-mushaf-state'><strong>Loading Mushaf page…</strong></div>}
  {loading&&image&&<div className='live-mushaf-loading'><span>Loading page {displayPage}…</span></div>}
