@@ -14,6 +14,11 @@ test.describe('published QuranReels site', () => {
       const failure = request.failure()?.errorText || 'unknown request failure'
       failedRequests.push(`${request.method()} ${request.url()} — ${failure}`)
     })
+    page.on('response', response => {
+      if (response.status() >= 400) {
+        failedRequests.push(`${response.request().method()} ${response.url()} — HTTP ${response.status()}`)
+      }
+    })
 
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
     await expect(page.getByRole('heading', { name: 'Waraq Quran Reels', exact: true })).toBeVisible({ timeout: 30_000 })
