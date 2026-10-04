@@ -1,68 +1,263 @@
 import React from 'react'
 import { mushafStyles, type MushafStyleId } from './mushafStyles'
-import { fetchPage, fetchChapterPages, type ApiVerse } from './mushafApi'
+import { fetchChapterPages, fetchPage, type ApiVerse } from './mushafApi'
 import { createExportCompositor } from './exportCompositor'
-import { useTranslationResources } from './useTranslationResources'
-import type { TranslationLanguage } from './translationUiModel'
 import { LiveRecitationControls } from './LiveRecitationControls'
 import { cacheQuranPage, getCachedQuranPage, quranPageCacheKey } from './quranLocalCache'
 
-type ExportMedia = { url?: string; kind?: 'image' | 'video' | 'upload'; opacity?: number; fit?: 'cover' | 'contain' | 'fill'; x?: number; y?: number }
-type ExportLogo = { url?: string; opacity?: number; size?: number; x?: number; y?: number }
-type ExportTranslation = { language: string; text: string }
-type ExternalTranslation = { key: string; language: TranslationLanguage; title: string; author: string; version: string; entries: Record<string, string> }
-type Props = { styleId: MushafStyleId; page: number; accessToken?: string; clientId?: string; chapterNumber?: number; activeVerse?: string; activeWordIndex?: number; highlight: string; showFinger?: boolean; autoScroll?: boolean; scrollSpeed?: number; onStatus?: (message: string) => void; exportCanvasRef?: React.RefObject<HTMLCanvasElement | null>; exportBackground?: ExportMedia; exportLogo?: ExportLogo; exportTranslations?: ExportTranslation[]; translationLanguages?: TranslationLanguage[]; externalTranslations?: ExternalTranslation[]; searchQuery?: string; quranTextSize?: number; translationTextSize?: number; quranTextColor?: string; translationTextColor?: string; autoTextColor?: boolean }
-
-function languageLabel(language: TranslationLanguage) { return language === 'en' ? 'English' : language === 'ur' ? 'Urdu' : 'Arabic' }
-const quranFont = (styleId: MushafStyleId) => (mushafStyles.find(style => style.id === styleId)?.fontFamily || 'Amiri Quran, serif').split(',')[0].trim()
-
-function relativeLuminance(r: number, g: number, b: number) { const linear = (v: number) => { const n = v / 255; return n <= .03928 ? n / 12.92 : Math.pow((n + .055) / 1.055, 2.4) }; return .2126 * linear(r) + .7152 * linear(g) + .0722 * linear(b) }
-function parseCssColor(value: string): [number, number, number] | null { const match = value.match(/rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)/i); if (match) return [Number(match[1]), Number(match[2]), Number(match[3])]; const hex = value.trim().replace('#', ''); if (/^[0-9a-f]{6}$/i.test(hex)) return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)]; return null }
-function autoColors(page: HTMLElement | null) { if (!page) return { text:'#17120c', translation:'#29231a', soft:'#66583f' }; const rect = page.getBoundingClientRect(); const points = [[.2,.25],[.5,.5],[.8,.75]]; let light = 0; for (const [px,py] of points) { const el = document.elementFromPoint(rect.left + rect.width * px, rect.top + rect.height * py) as HTMLElement | null; const bg = el ? parseCssColor(getComputedStyle(el).backgroundColor) : null; if (bg && relativeLuminance(...bg) > .48) light++ } return light >= 2 ? { text:'#11100d', translation:'#29231b', soft:'#66583f' } : { text:'#fff9e8', translation:'#f3ead5', soft:'#e1c67d' } }
-
-function LiveMushafPreviewInner({ styleId, page, accessToken = '', clientId = '', chapterNumber, activeVerse, activeWordIndex = 0, highlight, showFinger = true, autoScroll = true, scrollSpeed = 50, onStatus, exportCanvasRef, exportBackground, exportLogo, exportTranslations = [], translationLanguages = [], externalTranslations = [], searchQuery = '', quranTextSize = 100, translationTextSize = 100, quranTextColor = '', translationTextColor = '', autoTextColor = true }: Props) {
-  const [verses, setVerses] = React.useState<ApiVerse[]>([]); const [displayPage, setDisplayPage] = React.useState(page); const [error, setError] = React.useState(''); const [loading, setLoading] = React.useState(false); const [liveActiveVerse, setLiveActiveVerse] = React.useState(''); const [liveActiveWordIndex, setLiveActiveWordIndex] = React.useState(0); const [textColors, setTextColors] = React.useState({ text:'#17120c', translation:'#29231a', soft:'#66583f' })
-  const pageRef = React.useRef<HTMLDivElement>(null); const activeWordRef = React.useRef<HTMLSpanElement>(null); const [fingerStyle, setFingerStyle] = React.useState<React.CSSProperties>({ opacity:0 }); const compositorRef = React.useRef<{ draw:()=>void; destroy:()=>void } | null>(null); const { getId } = useTranslationResources(); const translationLanguageKey = translationLanguages.join('|'); const translationIds = React.useMemo(() => translationLanguages.map(getId).filter((id): id is number => typeof id === 'number'), [translationLanguageKey,getId]); const effectiveActiveVerse = liveActiveVerse || activeVerse; const effectiveActiveWordIndex = liveActiveVerse ? liveActiveWordIndex : activeWordIndex; const resolvedChapterNumber = chapterNumber || Number(verses[0]?.verse_key?.split(':')[0]) || 1
-  React.useEffect(()=>{setDisplayPage(page)},[page])
-  React.useEffect(()=>{let cancelled=false;void fetchChapterPages(chapterNumber||1,styleId).then(result=>{if(cancelled)return;if(effectiveActiveVerse){const [sura,ayah]=effectiveActiveVerse.split(':').map(Number);const key=sura*1000+ayah;const found=Object.entries(result.pages).find(([,b])=>{const [fs,fa]=b.from.split(':').map(Number);const [ts,ta]=b.to.split(':').map(Number);return key>=fs*1000+fa&&key<=ts*1000+ta});if(found)setDisplayPage(Number(found[0]))}}).catch(()=>undefined);return()=>{cancelled=true}},[chapterNumber,styleId,effectiveActiveVerse])
-  React.useEffect(()=>{let cancelled=false;const key=quranPageCacheKey(displayPage,styleId);setError('');setLoading(true);void getCachedQuranPage(key).then(cached=>{if(!cancelled&&cached?.length){setVerses(cached);setLoading(false);onStatus?.(`Cached Mushaf page ${displayPage} loaded`)}});fetchPage(displayPage,styleId,{accessToken,clientId},translationIds).then(data=>{if(cancelled)return;const nextVerses=data.verses||[];setVerses(nextVerses);setError('');setLoading(false);void cacheQuranPage(key,nextVerses);onStatus?.(`Mushaf page ${displayPage} loaded`)}).catch(e=>{if(cancelled)return;setLoading(false);setVerses(current=>{if(current.length)return current;setError(e instanceof Error?e.message:'Unable to load Mushaf page');return []});onStatus?.('Mushaf data unavailable; retrying from local cache')});return()=>{cancelled=true}},[styleId,displayPage,accessToken,clientId,translationIds,onStatus])
-  React.useEffect(()=>{setLiveActiveVerse('');setLiveActiveWordIndex(0)},[resolvedChapterNumber])
-  const filteredVerses=React.useMemo(()=>{const q=searchQuery.trim().toLocaleLowerCase();if(!q)return verses;return verses.filter(verse=>{const arabic=(verse.words||[]).map(word=>styleId==='indo-pak-muhammadi'?(word.text_indopak||''):(word.text_qpc_hafs||word.text_uthmani||'')).join(' ');const qfText=(verse.translations||[]).map(item=>item.text||'').join(' ');const externalText=externalTranslations.map(source=>source.entries[verse.verse_key]||'').join(' ');return `${verse.verse_key} ${arabic} ${qfText} ${externalText}`.toLocaleLowerCase().includes(q)})},[verses,searchQuery,styleId,externalTranslations])
-  const selectedVerse=React.useMemo(()=>filteredVerses.find(verse=>verse.verse_key===effectiveActiveVerse)||filteredVerses[0]||null,[filteredVerses,effectiveActiveVerse])
-  const lines=React.useMemo(()=>{const grouped=new Map<number,{verseKey:string;position:number;text:string}[]>();for(const verse of filteredVerses){for(const word of verse.words||[]){const text=styleId==='indo-pak-muhammadi'?(word.text_indopak||''):(word.text_qpc_hafs||word.text_uthmani||'');if(!text)continue;const line=Number(word.line_number)||1;const bucket=grouped.get(line)||[];bucket.push({verseKey:word.verse_key,position:word.position,text});grouped.set(line,bucket)}}return [...grouped.entries()].sort((a,b)=>a[0]-b[0]).map(([line,words])=>[line,words.sort((a,b)=>a.position-b.position)] as const)},[filteredVerses,styleId])
-  const activeWord=React.useMemo(()=>effectiveActiveVerse?(verses.find(v=>v.verse_key===effectiveActiveVerse)?.words||[])[effectiveActiveWordIndex]||null:null,[verses,effectiveActiveVerse,effectiveActiveWordIndex])
-  const resolvedTextColor = autoTextColor ? textColors.text : quranTextColor || textColors.text
-  const resolvedTranslationColor = autoTextColor ? textColors.translation : translationTextColor || textColors.translation
-  React.useEffect(()=>{if(!autoScroll||!activeWordRef.current||!pageRef.current||!effectiveActiveVerse)return;activeWordRef.current.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'})},[autoScroll,effectiveActiveVerse,effectiveActiveWordIndex,activeWord])
-  React.useEffect(()=>{const update=()=>setTextColors(autoColors(pageRef.current));update();const timer=window.setTimeout(update,400);window.addEventListener('resize',update);const observer=typeof ResizeObserver!=='undefined'&&pageRef.current?new ResizeObserver(update):null;observer?.observe(pageRef.current!);return()=>{window.clearTimeout(timer);window.removeEventListener('resize',update);observer?.disconnect()}},[exportBackground?.url,exportBackground?.opacity,lines.length])
-  React.useLayoutEffect(()=>{const word=activeWordRef.current,pageEl=pageRef.current;if(!showFinger||!word||!pageEl){setFingerStyle({opacity:0});return};const update=()=>{const wr=word.getBoundingClientRect(),pr=pageEl.getBoundingClientRect();setFingerStyle({opacity:1,left:`${wr.left-pr.left+wr.width/2}px`,top:`${wr.bottom-pr.top+6}px`,transitionDuration:`${Math.max(100,500-scrollSpeed*4)}ms`})};update();window.addEventListener('resize',update);pageEl.addEventListener('scroll',update,{passive:true});return()=>{window.removeEventListener('resize',update);pageEl.removeEventListener('scroll',update)}},[effectiveActiveVerse,effectiveActiveWordIndex,showFinger,scrollSpeed,lines,activeWord])
-  const translationRows=React.useMemo(()=>selectedVerse?[{verse:selectedVerse,translations:(selectedVerse.translations||[]).map(item=>{const language=translationLanguages.find(candidate=>getId(candidate)===item.resource_id);return language?{...item,language}:null}).filter((item):item is NonNullable<typeof item>=>Boolean(item))}].filter(row=>row.translations.length):[],[selectedVerse,translationLanguages,getId])
-  const drawMushaf=React.useCallback((ctx:CanvasRenderingContext2D,width:number,height:number)=>{ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);ctx.fillStyle='#f5efdc';const pageW=Math.min(width*.52,980);const pageX=(width-pageW)/2;ctx.fillRect(pageX,0,pageW,height);const lineHeight=Math.max(54,height/16);const totalHeight=Math.max(height,lines.length*lineHeight+80);const activeLine=Math.max(0,lines.findIndex(([,words])=>words.some(word=>word.verseKey===effectiveActiveVerse)));const scroll=Math.max(0,Math.min(totalHeight-height,(activeLine+0.5)*lineHeight-height*.45));ctx.save();ctx.beginPath();ctx.rect(pageX,0,pageW,height);ctx.clip();ctx.translate(0,-scroll);ctx.fillStyle=resolvedTextColor;ctx.direction='rtl';ctx.textAlign='right';lines.forEach(([,words],index)=>{let x=pageX+pageW-38;const y=55+index*lineHeight;ctx.font=''+Math.max(24,Math.min(52,width/25))*(quranTextSize/100)+'px serif';words.forEach(word=>{const active=Boolean(effectiveActiveVerse&&word.verseKey===effectiveActiveVerse&&activeWord&&word.position===activeWord.position);ctx.fillStyle=active?highlight:resolvedTextColor;ctx.fillText(word.text,x,y);x-=ctx.measureText(word.text+' ').width})});ctx.restore()},[lines,effectiveActiveVerse,activeWord,highlight,styleId,resolvedTextColor,quranTextSize])  React.useEffect(()=>{const canvas=exportCanvasRef?.current;if(!canvas||!lines.length)return;let cancelled=false;compositorRef.current?.destroy();compositorRef.current=null;const prepare=async()=>{try{await document.fonts.load(`40px '${quranFont(styleId)}'`)}catch{}if(cancelled)return;const compositor=await createExportCompositor({canvas,width:canvas.width||1280,height:canvas.height||720,background:exportBackground,logo:exportLogo,translations:exportTranslations,drawMushaf});if(cancelled)compositor.destroy();else compositorRef.current=compositor};void prepare().catch(errorValue=>{if(!cancelled)onStatus?.(errorValue instanceof Error?errorValue.message:'Export compositor failed')});return()=>{cancelled=true;compositorRef.current?.destroy();compositorRef.current=null}},[exportCanvasRef,exportBackground,exportLogo,exportTranslations,drawMushaf,lines.length,onStatus,styleId])
-  const exportCanvas=exportCanvasRef&&<canvas ref={exportCanvasRef} width={1280} height={720} aria-hidden="true" style={{position:'absolute',width:0,height:0,opacity:0,pointerEvents:'none'}}/>; const liveBackground=exportBackground?.url?(exportBackground.kind==='video'?<video className="live-player-background" src={exportBackground.url} autoPlay muted loop playsInline preload="auto" aria-hidden="true"/>:<img className="live-player-background" src={exportBackground.url} alt="" aria-hidden="true"/>):null; const liveLogo=exportLogo?.url?<img className="live-player-logo" src={exportLogo.url} alt="" aria-hidden="true"/>:null
-  if(loading&&!verses.length)return <div className="live-preview-shell"><div className="quran-live-page live-page-state"><div className="live-mushaf-state"><strong>Loading bundled Mushaf page {displayPage}</strong><small>Preparing local Quran text and page data…</small>{liveLogo}{exportCanvas}</div></div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>;if(error&&!verses.length)return <div className="live-preview-shell"><div className="quran-live-page live-page-state"><div className="live-mushaf-state error"><strong>Mushaf page unavailable</strong><span>{error}</span><small>The app will use locally cached Quran pages when available.</small>{liveLogo}{exportCanvas}</div></div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>;if(!lines.length)return <div className="live-preview-shell"><div className="quran-live-page live-page-state"><div className="live-mushaf-state">{searchQuery?'No matching verses on this page.':'No page data returned.'}{liveLogo}{exportCanvas}</div></div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>
-  return <div className="live-preview-shell"><div className="quran-live-page" dir="rtl" translate="no" ref={pageRef} style={{'--quran-text':resolvedTextColor,'--quran-translation':resolvedTranslationColor,'--quran-soft':textColors.soft} as React.CSSProperties}>{liveBackground}{liveLogo}<div className="live-page-number">{displayPage}</div>{showFinger&&<div className="live-finger" aria-hidden="true" style={fingerStyle}>☝</div>}<div className="live-quran-lines" style={{fontFamily:'Noto Naskh Arabic,serif',fontSize:`${quranTextSize}%`,color:resolvedTextColor,'--highlight':highlight} as React.CSSProperties}>{lines.map(([lineNumber,words])=><div key={lineNumber} className={words.some(word=>word.verseKey===effectiveActiveVerse)?'live-quran-line active-line':'live-quran-line'}>{words.map(word=>{const isActiveWord=Boolean(effectiveActiveVerse&&word.verseKey===effectiveActiveVerse&&activeWord&&word.position===activeWord.position);return <span ref={isActiveWord?activeWordRef:null} key={`${word.verseKey}-${word.position}`} className={isActiveWord?'active-live-word':'active-live-word-soft'}>{word.text}</span>})}</div>)}</div>{exportCanvas}</div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>
+type Props = {
+  styleId: MushafStyleId
+  page: number
+  chapterNumber?: number
+  highlight: string
+  showFinger?: boolean
+  autoScroll?: boolean
+  scrollSpeed?: number
+  onStatus?: (message: string) => void
+  exportCanvasRef?: React.RefObject<HTMLCanvasElement | null>
 }
-function sameValue<T>(a:T|undefined,b:T|undefined){return Object.is(a,b)||JSON.stringify(a)===JSON.stringify(b)}
-const liveMushafPropsEqual=(previous:Props,next:Props)=>previous.styleId===next.styleId&&previous.page===next.page&&previous.accessToken===next.accessToken&&previous.clientId===next.clientId&&previous.chapterNumber===next.chapterNumber&&previous.activeVerse===next.activeVerse&&previous.activeWordIndex===next.activeWordIndex&&previous.highlight===next.highlight&&previous.showFinger===next.showFinger&&previous.autoScroll===next.autoScroll&&previous.scrollSpeed===next.scrollSpeed&&previous.exportCanvasRef===next.exportCanvasRef&&previous.onStatus===next.onStatus&&sameValue(previous.exportBackground,next.exportBackground)&&sameValue(previous.exportLogo,next.exportLogo)&&sameValue(previous.exportTranslations,next.exportTranslations)&&sameValue(previous.translationLanguages,next.translationLanguages)&&sameValue(previous.externalTranslations,next.externalTranslations)&&previous.searchQuery===next.searchQuery&&previous.quranTextSize===next.quranTextSize&&previous.translationTextSize===next.translationTextSize&&previous.quranTextColor===next.quranTextColor&&previous.translationTextColor===next.translationTextColor&&previous.autoTextColor===next.autoTextColor
-export const LiveMushafPreview=React.memo(LiveMushafPreviewInner,liveMushafPropsEqual  React.useEffect(()=>{setDisplayPage(page)},[page])
-  React.useEffect(()=>{let cancelled=false;void fetchChapterPages(chapterNumber||1,styleId).then(result=>{if(cancelled)return;if(effectiveActiveVerse){const [s,a]=effectiveActiveVerse.split(':').map(Number);const found=Object.entries(result.pages).find(([,b])=>{const [fs,fa]=b.from.split(':').map(Number);const [ts,ta]=b.to.split(':').map(Number);const key=s*1000+a;return key>=fs*1000+fa&&key<=ts*1000+ta});if(found)setDisplayPage(Number(found[0]))}}).catch(()=>undefined);return()=>{cancelled=true}},[chapterNumber,styleId,effectiveActiveVerse])
-  React.useEffect(()=>{let cancelled=false;const key=quranPageCacheKey(displayPage,styleId);setError('');setLoading(true);void getCachedQuranPage(key).then(cached=>{if(!cancelled&&cached?.length){setVerses(cached);setLoading(false);onStatus?.(`Cached Mushaf page ${displayPage} loaded`)}});fetchPage(displayPage,styleId,{accessToken,clientId},translationIds).then(data=>{if(cancelled)return;const nextVerses=data.verses||[];setVerses(nextVerses);setError('');setLoading(false);void cacheQuranPage(key,nextVerses);onStatus?.(`Mushaf page ${displayPage} loaded`)}).catch(e=>{if(cancelled)return;setLoading(false);setVerses(current=>{if(current.length)return current;setError(e instanceof Error?e.message:'Unable to load Mushaf page');return []});onStatus?.('Mushaf data unavailable; retrying from local cache')});return()=>{cancelled=true}},[styleId,displayPage,accessToken,clientId,translationIds,onStatus])
-  React.useEffect(()=>{setLiveActiveVerse('');setLiveActiveWordIndex(0)},[resolvedChapterNumber])
-  const filteredVerses=React.useMemo(()=>{const q=searchQuery.trim().toLocaleLowerCase();if(!q)return verses;return verses.filter(verse=>{const arabic=(verse.words||[]).map(word=>styleId==='indo-pak-muhammadi'?(word.text_indopak||''):(word.text_qpc_hafs||word.text_uthmani||'')).join(' ');const qfText=(verse.translations||[]).map(item=>item.text||'').join(' ');const externalText=externalTranslations.map(source=>source.entries[verse.verse_key]||'').join(' ');return `${verse.verse_key} ${arabic} ${qfText} ${externalText}`.toLocaleLowerCase().includes(q)})},[verses,searchQuery,styleId,externalTranslations])
-  const selectedVerse=React.useMemo(()=>filteredVerses.find(verse=>verse.verse_key===effectiveActiveVerse)||filteredVerses[0]||null,[filteredVerses,effectiveActiveVerse])
-  const lines=React.useMemo(()=>{const grouped=new Map<number,{verseKey:string;position:number;text:string}[]>();for(const verse of filteredVerses){for(const word of verse.words||[]){const text=styleId==='indo-pak-muhammadi'?(word.text_indopak||''):(word.text_qpc_hafs||word.text_uthmani||'');if(!text)continue;const line=Number(word.line_number)||1;const bucket=grouped.get(line)||[];bucket.push({verseKey:word.verse_key,position:word.position,text});grouped.set(line,bucket)}}return [...grouped.entries()].sort((a,b)=>a[0]-b[0]).map(([line,words])=>[line,words.sort((a,b)=>a.position-b.position)] as const)},[filteredVerses,styleId])
-  const activeWord=React.useMemo(()=>effectiveActiveVerse?(verses.find(v=>v.verse_key===effectiveActiveVerse)?.words||[])[effectiveActiveWordIndex]||null:null,[verses,effectiveActiveVerse,effectiveActiveWordIndex])
-  const resolvedTextColor = autoTextColor ? textColors.text : quranTextColor || textColors.text
-  const resolvedTranslationColor = autoTextColor ? textColors.translation : translationTextColor || textColors.translation
-  React.useEffect(()=>{if(!autoScroll||!activeWordRef.current||!pageRef.current||!effectiveActiveVerse)return;activeWordRef.current.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'})},[autoScroll,effectiveActiveVerse,effectiveActiveWordIndex,activeWord])
-  React.useEffect(()=>{const update=()=>setTextColors(autoColors(pageRef.current));update();const timer=window.setTimeout(update,400);window.addEventListener('resize',update);const observer=typeof ResizeObserver!=='undefined'&&pageRef.current?new ResizeObserver(update):null;observer?.observe(pageRef.current!);return()=>{window.clearTimeout(timer);window.removeEventListener('resize',update);observer?.disconnect()}},[exportBackground?.url,exportBackground?.opacity,lines.length])
-  React.useLayoutEffect(()=>{const word=activeWordRef.current,pageEl=pageRef.current;if(!showFinger||!word||!pageEl){setFingerStyle({opacity:0});return};const update=()=>{const wr=word.getBoundingClientRect(),pr=pageEl.getBoundingClientRect();setFingerStyle({opacity:1,left:`${wr.left-pr.left+wr.width/2}px`,top:`${wr.bottom-pr.top+6}px`,transitionDuration:`${Math.max(100,500-scrollSpeed*4)}ms`})};update();window.addEventListener('resize',update);pageEl.addEventListener('scroll',update,{passive:true});return()=>{window.removeEventListener('resize',update);pageEl.removeEventListener('scroll',update)}},[effectiveActiveVerse,effectiveActiveWordIndex,showFinger,scrollSpeed,lines,activeWord])
-  const translationRows=React.useMemo(()=>selectedVerse?[{verse:selectedVerse,translations:(selectedVerse.translations||[]).map(item=>{const language=translationLanguages.find(candidate=>getId(candidate)===item.resource_id);return language?{...item,language}:null}).filter((item):item is NonNullable<typeof item>=>Boolean(item))}].filter(row=>row.translations.length):[],[selectedVerse,translationLanguages,getId])
-  const drawMushaf=React.useCallback((ctx:CanvasRenderingContext2D,width:number,height:number)=>{ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);ctx.fillStyle='#f5efdc';const pageW=Math.min(width*.52,980);const pageX=(width-pageW)/2;ctx.fillRect(pageX,0,pageW,height);const lineHeight=Math.max(54,height/16);const totalHeight=Math.max(height,lines.length*lineHeight+80);const activeLine=Math.max(0,lines.findIndex(([,words])=>words.some(word=>word.verseKey===effectiveActiveVerse)));const scroll=Math.max(0,Math.min(totalHeight-height,(activeLine+0.5)*lineHeight-height*.45));ctx.save();ctx.beginPath();ctx.rect(pageX,0,pageW,height);ctx.clip();ctx.translate(0,-scroll);ctx.fillStyle=resolvedTextColor;ctx.direction='rtl';ctx.textAlign='right';lines.forEach(([,words],index)=>{let x=pageX+pageW-38;const y=55+index*lineHeight;ctx.font=''+Math.max(24,Math.min(52,width/25))*(quranTextSize/100)+'px serif';words.forEach(word=>{const active=Boolean(effectiveActiveVerse&&word.verseKey===effectiveActiveVerse&&activeWord&&word.position===activeWord.position);ctx.fillStyle=active?highlight:resolvedTextColor;ctx.fillText(word.text,x,y);x-=ctx.measureText(word.text+' ').width})});ctx.restore()},[lines,effectiveActiveVerse,activeWord,highlight,styleId,resolvedTextColor,quranTextSize])  React.useEffect(()=>{const canvas=exportCanvasRef?.current;if(!canvas||!lines.length)return;let cancelled=false;compositorRef.current?.destroy();compositorRef.current=null;const prepare=async()=>{try{await document.fonts.load(`40px '${quranFont(styleId)}'`)}catch{}if(cancelled)return;const compositor=await createExportCompositor({canvas,width:canvas.width||1280,height:canvas.height||720,background:exportBackground,logo:exportLogo,translations:exportTranslations,drawMushaf});if(cancelled)compositor.destroy();else compositorRef.current=compositor};void prepare().catch(errorValue=>{if(!cancelled)onStatus?.(errorValue instanceof Error?errorValue.message:'Export compositor failed')});return()=>{cancelled=true;compositorRef.current?.destroy();compositorRef.current=null}},[exportCanvasRef,exportBackground,exportLogo,exportTranslations,drawMushaf,lines.length,onStatus,styleId])
-  const exportCanvas=exportCanvasRef&&<canvas ref={exportCanvasRef} width={1280} height={720} aria-hidden="true" style={{position:'absolute',width:0,height:0,opacity:0,pointerEvents:'none'}}/>; const liveBackground=exportBackground?.url?(exportBackground.kind==='video'?<video className="live-player-background" src={exportBackground.url} autoPlay muted loop playsInline preload="auto" aria-hidden="true"/>:<img className="live-player-background" src={exportBackground.url} alt="" aria-hidden="true"/>):null; const liveLogo=exportLogo?.url?<img className="live-player-logo" src={exportLogo.url} alt="" aria-hidden="true"/>:null
-  if(loading&&!verses.length)return <div className="live-preview-shell"><div className="quran-live-page live-page-state"><div className="live-mushaf-state"><strong>Loading bundled Mushaf page {displayPage}</strong><small>Preparing local Quran text and page data…</small>{liveLogo}{exportCanvas}</div></div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>;if(error&&!verses.length)return <div className="live-preview-shell"><div className="quran-live-page live-page-state"><div className="live-mushaf-state error"><strong>Mushaf page unavailable</strong><span>{error}</span><small>The app will use locally cached Quran pages when available.</small>{liveLogo}{exportCanvas}</div></div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>;if(!lines.length)return <div className="live-preview-shell"><div className="quran-live-page live-page-state"><div className="live-mushaf-state">{searchQuery?'No matching verses on this page.':'No page data returned.'}{liveLogo}{exportCanvas}</div></div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>
-  return <div className="live-preview-shell"><div className="quran-live-page" dir="rtl" translate="no" ref={pageRef} style={{'--quran-text':resolvedTextColor,'--quran-translation':resolvedTranslationColor,'--quran-soft':textColors.soft} as React.CSSProperties}>{liveBackground}{liveLogo}<div className="live-page-number">{displayPage}</div>{showFinger&&<div className="live-finger" aria-hidden="true" style={fingerStyle}>☝</div>}<div className="live-quran-lines" style={{fontFamily:'Noto Naskh Arabic,serif',fontSize:`${quranTextSize}%`,color:resolvedTextColor,'--highlight':highlight} as React.CSSProperties}>{lines.map(([lineNumber,words])=><div key={lineNumber} className={words.some(word=>word.verseKey===effectiveActiveVerse)?'live-quran-line active-line':'live-quran-line'}>{words.map(word=>{const isActiveWord=Boolean(effectiveActiveVerse&&word.verseKey===effectiveActiveVerse&&activeWord&&word.position===activeWord.position);return <span ref={isActiveWord?activeWordRef:null} key={`${word.verseKey}-${word.position}`} className={isActiveWord?'active-live-word':'active-live-word-soft'}>{word.text}</span>})}</div>)}</div>{exportCanvas}</div><div className="recitation-dock"><LiveRecitationControls chapterNumber={resolvedChapterNumber} onSync={(verseKey,wordIndex)=>{setLiveActiveVerse(verseKey);setLiveActiveWordIndex(wordIndex)}} onStatus={onStatus}/></div></div>
+
+type Word = { verseKey: string; position: number; text: string }
+type Line = [number, Word[]]
+
+const quranFont = (styleId: MushafStyleId) =>
+  (mushafStyles.find(style => style.id === styleId)?.fontFamily || 'Amiri Quran, serif').split(',')[0].trim()
+
+function verseNumber(key: string) {
+  const [sura, ayah] = key.split(':').map(Number)
+  return (sura || 0) * 1000 + (ayah || 0)
 }
-function sameValue<T>(a:T|undefined,b:T|undefined){return Object.is(a,b)||JSON.stringify(a)===JSON.stringify(b)}
-const liveMushafPropsEqual=(previous:Props,next:Props)=>previous.styleId===next.styleId&&previous.page===next.page&&previous.accessToken===next.accessToken&&previous.clientId===next.clientId&&previous.chapterNumber===next.chapterNumber&&previous.activeVerse===next.activeVerse&&previous.activeWordIndex===next.activeWordIndex&&previous.highlight===next.highlight&&previous.showFinger===next.showFinger&&previous.autoScroll===next.autoScroll&&previous.scrollSpeed===next.scrollSpeed&&previous.exportCanvasRef===next.exportCanvasRef&&previous.onStatus===next.onStatus&&sameValue(previous.exportBackground,next.exportBackground)&&sameValue(previous.exportLogo,next.exportLogo)&&sameValue(previous.exportTranslations,next.exportTranslations)&&sameValue(previous.translationLanguages,next.translationLanguages)&&sameValue(previous.externalTranslations,next.externalTranslations)&&previous.searchQuery===next.searchQuery&&previous.quranTextSize===next.quranTextSize&&previous.translationTextSize===next.translationTextSize&&previous.quranTextColor===next.quranTextColor&&previous.translationTextColor===next.translationTextColor&&previous.autoTextColor===next.autoTextColor
-export const LiveMushafPreview=React.memo(LiveMushafPreviewInner,liveMushafPropsEqual)
+
+function wordsForVerse(verse: ApiVerse, styleId: MushafStyleId): Word[] {
+  return (verse.words || [])
+    .map(word => {
+      const text = styleId === 'indo-pak-muhammadi'
+        ? word.text_indopak || ''
+        : word.text_qpc_hafs || word.text_uthmani || ''
+      return text ? { verseKey: word.verse_key, position: word.position, text } : null
+    })
+    .filter((word): word is Word => Boolean(word))
+    .sort((a, b) => a.position - b.position)
+}
+
+function AppPage({
+  styleId,
+  page,
+  chapterNumber = 1,
+  highlight,
+  showFinger = false,
+  autoScroll = true,
+  scrollSpeed = 50,
+  onStatus,
+  exportCanvasRef,
+}: Props) {
+  const [displayPage, setDisplayPage] = React.useState(page)
+  const [verses, setVerses] = React.useState<ApiVerse[]>([])
+  const [activeVerse, setActiveVerse] = React.useState('')
+  const [activeWordIndex, setActiveWordIndex] = React.useState(0)
+  const [error, setError] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const pageRef = React.useRef<HTMLDivElement>(null)
+  const activeWordRef = React.useRef<HTMLSpanElement>(null)
+  const compositorRef = React.useRef<{ destroy: () => void } | null>(null)
+
+  React.useEffect(() => setDisplayPage(page), [page])
+
+  React.useEffect(() => {
+    let cancelled = false
+    setActiveVerse('')
+    setActiveWordIndex(0)
+    void fetchChapterPages(chapterNumber, styleId).catch(() => undefined)
+    return () => { cancelled = true }
+  }, [chapterNumber, styleId])
+
+  React.useEffect(() => {
+    if (!activeVerse) return
+    let cancelled = false
+    void fetchChapterPages(chapterNumber, styleId).then(result => {
+      if (cancelled) return
+      const key = verseNumber(activeVerse)
+      const match = Object.entries(result.pages).find(([, boundary]) =>
+        key >= verseNumber(boundary.from) && key <= verseNumber(boundary.to)
+      )
+      if (match) setDisplayPage(Number(match[0]))
+    }).catch(() => undefined)
+    return () => { cancelled = true }
+  }, [activeVerse, chapterNumber, styleId])
+
+  React.useEffect(() => {
+    let cancelled = false
+    const cacheKey = quranPageCacheKey(displayPage, styleId)
+    setLoading(true)
+    setError('')
+
+    void getCachedQuranPage(cacheKey).then(cached => {
+      if (!cancelled && cached?.length) {
+        setVerses(cached)
+        setLoading(false)
+      }
+    })
+
+    fetchPage(displayPage, styleId).then(data => {
+      if (cancelled) return
+      const next = data.verses || []
+      setVerses(next)
+      setLoading(false)
+      void cacheQuranPage(cacheKey, next)
+      onStatus?.(`Mushaf page ${displayPage} loaded`)
+    }).catch(errorValue => {
+      if (cancelled) return
+      setLoading(false)
+      setError(errorValue instanceof Error ? errorValue.message : 'Unable to load Mushaf page.')
+    })
+
+    return () => { cancelled = true }
+  }, [displayPage, styleId, onStatus])
+
+  const lines = React.useMemo<Line[]>(() => {
+    const grouped = new Map<number, Word[]>()
+    for (const verse of verses) {
+      for (const word of wordsForVerse(verse, styleId)) {
+        const sourceWord = verse.words?.find(item => item.position === word.position)
+        const lineNumber = Number(sourceWord?.line_number) || 1
+        const bucket = grouped.get(lineNumber) || []
+        bucket.push(word)
+        grouped.set(lineNumber, bucket)
+      }
+    }
+    return [...grouped.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([line, words]) => [line, words] as Line)
+  }, [verses, styleId])
+
+  const activeWord = React.useMemo(() => {
+    const verse = verses.find(item => item.verse_key === activeVerse)
+    return verse ? wordsForVerse(verse, styleId)[activeWordIndex] || null : null
+  }, [verses, activeVerse, activeWordIndex, styleId])
+
+  React.useEffect(() => {
+    if (!autoScroll || !activeWordRef.current) return
+    activeWordRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'nearest',
+    })
+  }, [autoScroll, activeVerse, activeWordIndex, activeWord, displayPage])
+
+  const drawMushaf = React.useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
+
+    const pageWidth = Math.min(width * 0.52, 980)
+    const pageX = (width - pageWidth) / 2
+    const lineHeight = Math.max(54, height / 16)
+    const contentHeight = Math.max(height, lines.length * lineHeight + 90)
+    const activeLineIndex = Math.max(0, lines.findIndex(([, words]) =>
+      words.some(word => word.verseKey === activeVerse)
+    ))
+    const targetScroll = Math.max(
+      0,
+      Math.min(contentHeight - height, (activeLineIndex + 0.5) * lineHeight - height * 0.45)
+    )
+
+    ctx.fillStyle = '#f5efdc'
+    ctx.fillRect(pageX, 0, pageWidth, height)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(pageX, 0, pageWidth, height)
+    ctx.clip()
+    ctx.translate(0, -targetScroll)
+    ctx.direction = 'rtl'
+    ctx.textAlign = 'right'
+    ctx.font = `${Math.max(24, Math.min(52, width / 25))}px '${quranFont(styleId)}'`
+
+    lines.forEach(([, words], lineIndex) => {
+      let x = pageX + pageWidth - 34
+      const y = 58 + lineIndex * lineHeight
+      for (const word of words) {
+        const active = word.verseKey === activeVerse && activeWord?.position === word.position
+        ctx.fillStyle = active ? highlight : '#29271f'
+        ctx.fillText(word.text, x, y)
+        x -= ctx.measureText(word.text + ' ').width
+      }
+    })
+    ctx.restore()
+  }, [lines, activeVerse, activeWord, highlight, styleId])
+
+  React.useEffect(() => {
+    const canvas = exportCanvasRef?.current
+    if (!canvas || !lines.length) return
+    let cancelled = false
+    compositorRef.current?.destroy()
+    compositorRef.current = null
+
+    const prepare = async () => {
+      try { await document.fonts.load(`40px '${quranFont(styleId)}'`) } catch {}
+      if (cancelled) return
+      const compositor = await createExportCompositor({
+        canvas,
+        width: canvas.width || 1920,
+        height: canvas.height || 1080,
+        drawMushaf,
+      })
+      if (cancelled) compositor.destroy()
+      else compositorRef.current = compositor
+    }
+
+    void prepare().catch(errorValue => {
+      if (!cancelled) onStatus?.(errorValue instanceof Error ? errorValue.message : 'Export renderer failed.')
+    })
+
+    return () => {
+      cancelled = true
+      compositorRef.current?.destroy()
+      compositorRef.current = null
+    }
+  }, [exportCanvasRef, drawMushaf, lines.length, onStatus, styleId])
+
+  if (loading && !lines.length) {
+    return <div className="live-preview-shell">
+      <div className="quran-live-page live-page-state">
+        <div className="live-mushaf-state"><strong>Loading Mushaf</strong></div>
+      </div>
+      <Recitation chapterNumber={chapterNumber} onSync={(verse, word) => { setActiveVerse(verse); setActiveWordIndex(word) }} onStatus={onStatus} />
+    </div>
+  }
+
+  if (error && !lines.length) {
+    return <div className="live-preview-shell">
+      <div className="quran-live-page live-page-state">
+        <div className="live-mushaf-state error"><strong>Mushaf unavailable</strong><span>{error}</span></div>
+      </div>
+      <Recitation chapterNumber={chapterNumber} onSync={(verse, word) => { setActiveVerse(verse); setActiveWordIndex(word) }} onStatus={onStatus} />
+    </div>
+  }
+
+  return <div className="live-preview-shell">
+    <div className="quran-live-page" dir="rtl" translate="no" ref={pageRef}>
+      <div className="live-page-number">{displayPage}</div>
+      <div className="live-quran-lines" style={{ fontFamily: `'${quranFont(styleId)}', serif`, '--highlight': highlight } as React.CSSProperties}>
+        {lines.map(([lineNumber, words]) =>
+          <div key={lineNumber} className={words.some(word => word.verseKey === activeVerse) ? 'live-quran-line active-line' : 'live-quran-line'}>
+            {words.map(word => {
+              const active = word.verseKey === activeVerse && activeWord?.position === word.position
+              return <span
+                ref={active ? activeWordRef : undefined}
+                key={`${word.verseKey}-${word.position}`}
+                className={active ? 'active-live-word' : 'active-live-word-soft'}
+              >{word.text}</span>
+            })}
+          </div>
+        )}
+      </div>
+      <canvas ref={exportCanvasRef || undefined} width={1280} height={720} aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />
+    </div>
+    <Recitation chapterNumber={chapterNumber} onSync={(verse, word) => { setActiveVerse(verse); setActiveWordIndex(word) }} onStatus={onStatus} />
+  </div>
+}
+
+function Recitation({ chapterNumber, onSync, onStatus }: { chapterNumber: number; onSync: (verse: string, word: number) => void; onStatus?: (message: string) => void }) {
+  return <LiveRecitationControls chapterNumber={chapterNumber} onSync={onSync} onStatus={onStatus} />
+}
+
+export const LiveMushafPreview = React.memo(AppPage)
