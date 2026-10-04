@@ -30,7 +30,7 @@ function AppPage({page,chapterNumber=1,activeVerse='',onStatus,exportCanvasRef,h
   if(centers.length>=activeLine){setLineY((centers[activeLine-1]/height)*100)}else setLineY(null)
  },[displayPage,activeLine,loading])
  const pan=lineY==null?Math.max(0,Math.min(18,((activeLine-1)/14)*18)):Math.max(-18,Math.min(18,(lineY-50)*0.75))
- return <div className={'live-preview-shell '+(vertical?'vertical-preview':'')}><div className='quran-live-page image-mushaf-page' dir='ltr'>
+ return <div className={'live-preview-shell '+(vertical?'vertical-preview':'landscape-preview')}><div className='quran-live-page image-mushaf-page' dir='ltr'>
  {loading&&<div className='live-mushaf-state'><strong>Loading Mushaf page…</strong></div>}
  {!loading&&error&&<div className='live-mushaf-state error'><strong>Mushaf unavailable</strong><span>{error}</span></div>}
  {!loading&&!error&&imageRef.current&&<div className='mushaf-image-stage' style={{transform:'translateY(-'+pan+'%)'}}><img className='real-mushaf-image' src={imageRef.current.src} alt={'Indo-Pak Mushaf page '+displayPage} draggable={false}/><div className='active-line-highlight' style={{top:(lineY==null?((activeLine-1)/15)*100:lineY-3.2)+'%',height:'6.67%',background:highlight}}/></div>}
