@@ -61,7 +61,7 @@ function App() {
     <header className="topbar minimal-topbar">
       <div className="title-block">
         <h1>Waraq Quran Reels</h1>
-        <div className="subtitle">Indo-Pak Mushaf · Ahmad Al-Ajmy</div>
+        <div className="subtitle">{selectedSurah.arabic} · Indo-Pak Mushaf · Ahmad Al-Ajmy</div>
       </div>
     </header>
 
