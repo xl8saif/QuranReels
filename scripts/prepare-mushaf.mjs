@@ -1,53 +1,57 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const output = resolve(process.cwd(), 'public/data/mushaf/page-map.json')
-const source = 'https://qul.tarteel.ai/mushaf_layouts/6'
+const root = resolve(process.cwd())
+const output = resolve(root, 'public/data/mushaf/page-map.json')
+const quranFile = resolve(root, 'public/data/quran/arabic/quran-simple-clean.txt')
+const PAGE_COUNT = 610
 
-const response = await fetch(source, { headers: { accept: 'text/html' } })
-if (!response.ok) throw new Error(`Unable to download QUL Qudratullah page map (${response.status})`)
-const html = await response.text()
-
-// QUL publishes the complete 610-page Qudratullah table on this page.
-// Each row is rendered as: page | first-verse - last-verse | Ready | Preview.
-const visible = html.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\\s+/g, ' ')
-const pattern = /(\\d+)\\s+(\\d+):(\\d+)\\s*-\\s*(\\d+):(\\d+)\\s+Ready/g
-const pages = []
-let match
-while ((match = pattern.exec(visible)) !== null) {
-  pages.push({
-    page: Number(match[1]),
-    sura: Number(match[2]),
-    aya: Number(match[3]),
-    last_sura: Number(match[4]),
-    last_aya: Number(match[5]),
+// The printed Qudratullah image set is 610 pages. The repository also carries
+// the complete Quran text locally, so the build never depends on a live API.
+// We generate stable first-verse page anchors by balanced word volume. This is
+// used only for synchronization; the UI itself always displays the real page image.
+const rows = readFileSync(quranFile, 'utf8')
+  .split(/\r?\n/)
+  .map(line => line.trim())
+  .filter(Boolean)
+  .map(line => {
+    const match = line.match(/^(\d+)\|(\d+)\|(.*)$/)
+    if (!match) return null
+    const words = match[3].split(/\s+/).filter(Boolean).length
+    return { sura: Number(match[1]), aya: Number(match[2]), words }
   })
-}
+  .filter(Boolean)
 
-pages.sort((a, b) => a.page - b.page)
+if (rows.length < 6000) throw new Error(`Bundled Quran text is unexpectedly incomplete: ${rows.length} ayahs`)
 
-if (pages.length !== 610 || pages.some((item, index) => item.page !== index + 1)) {
-  // CI-safe fallback: use the open 604-page Quran metadata and resample it to
-  // the 610-page Qudratullah image sequence. The page image remains the source
-  // of truth visually; this fallback only prevents a broken app if QUL is
-  // temporarily unavailable during the build.
-  const fallbackUrl = 'https://raw.githubusercontent.com/Mushaf-Learning/quran-text/main/metadata/pages.json'
-  const fallbackResponse = await fetch(fallbackUrl, { headers: { accept: 'application/json' } })
-  if (!fallbackResponse.ok) throw new Error(`QUL map unavailable and fallback page metadata failed (${fallbackResponse.status})`)
-  const fallback = await fallbackResponse.json()
-  if (!Array.isArray(fallback) || fallback.length !== 604) throw new Error(`Invalid fallback page metadata: expected 604 pages, found ${Array.isArray(fallback) ? fallback.length : 'invalid'}`)
-  pages.length = 0
-  for (let page = 1; page <= 610; page++) {
-    const sourceIndex = Math.min(603, Math.floor((page - 1) * 604 / 610))
-    const source = fallback[sourceIndex]
-    pages.push({
-      page,
-      sura: Number(source.sura ?? source.surah ?? source.chapter ?? 1),
-      aya: Number(source.aya ?? source.ayah ?? 1),
-    })
+const totalWords = rows.reduce((sum, row) => sum + row.words, 0)
+const pages = []
+let cumulative = 0
+let cursor = 0
+
+for (let page = 1; page <= PAGE_COUNT; page++) {
+  if (page === 1) {
+    pages.push({ page: 1, sura: 1, aya: 1 })
+    cumulative += rows[0].words
+    cursor = 1
+    continue
   }
-  console.warn('QUL page table was unavailable during build; generated a 610-page fallback map from open 604-page metadata.')
+  if (page === 2) {
+    const index = rows.findIndex(row => row.sura === 2 && row.aya === 1)
+    pages.push({ page: 2, sura: 2, aya: 1 })
+    cumulative = rows.slice(0, index + 1).reduce((sum, row) => sum + row.words, 0)
+    cursor = index + 1
+    continue
+  }
+
+  const target = totalWords * (page - 1) / PAGE_COUNT
+  while (cursor < rows.length - 1 && cumulative < target) {
+    cumulative += rows[cursor].words
+    cursor++
+  }
+  const row = rows[cursor]
+  pages.push({ page, sura: row.sura, aya: row.aya })
 }
 
-writeFileSync(output, JSON.stringify(pages, null, 2) + '\\n', 'utf8')
-console.log(`Generated Qudratullah-compatible 610-page Mushaf map: ${pages.length} pages`)
+writeFileSync(output, JSON.stringify(pages, null, 2) + '\n', 'utf8')
+console.log(`Generated local 610-page Mushaf synchronization map: ${pages.length} pages from ${rows.length} bundled ayahs`)
