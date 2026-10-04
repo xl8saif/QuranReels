@@ -1,4 +1,6 @@
-const BASE = 'https://sachal2508.github.io/AL-Quran-App-Quran-Images/quran_15line'
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/Sachal2508/AL-Quran-App-Quran-Images/main/quran_15line'
+const JSDELIVR_BASE = 'https://cdn.jsdelivr.net/gh/Sachal2508/AL-Quran-App-Quran-Images@main/quran_15line'
+const GITHUB_PAGES_BASE = 'https://sachal2508.github.io/AL-Quran-App-Quran-Images/quran_15line'
 
 // Qudratullah 15-line image repository: 610 Quran pages grouped by Juz.
 // Counts are taken from the published image tree: 21, then 20 pages for Juz 2–15,
@@ -19,16 +21,35 @@ export function indoPakPageImageUrl(page:number){
     if(safe >= JUZ_STARTS[i] && safe < next){ juz = i+1; break }
   }
   const localPage = safe - JUZ_STARTS[juz-1] + 1
-  return BASE + '/juz_' + juz + '/page_' + localPage + '.jpg'
+  return JSDELIVR_BASE + '/juz_' + juz + '/page_' + localPage + '.jpg'
+}
+
+function indoPakPageImageSources(page:number){
+  const safe = Math.min(INDOPAK_PAGE_COUNT, Math.max(1, Math.floor(page)))
+  let juz = JUZ_PAGE_COUNTS.length
+  for(let i=0;i<JUZ_STARTS.length;i++){
+    const next = JUZ_STARTS[i+1] ?? INDOPAK_PAGE_COUNT + 1
+    if(safe >= JUZ_STARTS[i] && safe < next){ juz = i+1; break }
+  }
+  const localPage = safe - JUZ_STARTS[juz-1] + 1
+  const suffix = '/juz_' + juz + '/page_' + localPage + '.jpg'
+  return [JSDELIVR_BASE + suffix, GITHUB_RAW_BASE + suffix, GITHUB_PAGES_BASE + suffix]
 }
 
 export function loadIndoPakPage(page:number){
   return new Promise<HTMLImageElement>((resolve,reject)=>{
     const image = new Image()
-    // GitHub Raw serves the Mushaf artwork for display; avoid forcing CORS mode here.
-    // A strict crossOrigin request can fail before the image reaches the play pane.
+    const sources = indoPakPageImageSources(page)
+    let index = 0
+    const tryNext = () => {
+      if(index >= sources.length){
+        reject(new Error('Indo-Pak Mushaf page ' + page + ' image could not be loaded from the available CDNs.'))
+        return
+      }
+      image.src = sources[index++]
+    }
     image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('Indo-Pak Mushaf page ' + page + ' image could not be loaded.'))
-    image.src = indoPakPageImageUrl(page)
+    image.onerror = tryNext
+    tryNext()
   })
 }
