@@ -102,42 +102,10 @@ export async function createExportCompositor(options: ExportCompositorOptions) {
     const visual = getVisualEditorSettings()
 
     ctx.clearRect(0, 0, width, height)
-    ctx.fillStyle = '#f7f1e4'; ctx.fillRect(0, 0, width, height)
-
-    const background = options.background
-    if (backgroundImage && background) {
-      ctx.save()
-      ctx.globalAlpha = (background.opacity ?? 0.35) * (1 - visual.backgroundDim / 100)
-      ctx.filter = visual.backgroundBlur > 0 ? `blur(${visual.backgroundBlur}px)` : 'none'
-      if (visual.backgroundZoom !== 100) {
-        const zoom = visual.backgroundZoom / 100
-        ctx.translate(width / 2, height / 2); ctx.scale(zoom, zoom); ctx.translate(-width / 2, -height / 2)
-      }
-      drawFit(ctx, backgroundImage, width, height, background.fit || 'cover', visual.backgroundX, visual.backgroundY)
-      ctx.restore()
-    } else if (backgroundVideo && background && backgroundVideo.readyState >= 2) {
-      ctx.save()
-      ctx.globalAlpha = (background.opacity ?? 0.35) * (1 - visual.backgroundDim / 100)
-      ctx.filter = visual.backgroundBlur > 0 ? `blur(${visual.backgroundBlur}px)` : 'none'
-      if (visual.backgroundZoom !== 100) {
-        const zoom = visual.backgroundZoom / 100
-        ctx.translate(width / 2, height / 2); ctx.scale(zoom, zoom); ctx.translate(-width / 2, -height / 2)
-      }
-      drawFit(ctx, backgroundVideo, width, height, background.fit || 'cover', visual.backgroundX, visual.backgroundY)
-      ctx.restore()
-    }
-
-    ctx.save()
-    const baseMushafScale = Math.min(safeWidth / width, safeHeight / height)
-    const mushafWidth = width * baseMushafScale
-    const mushafHeight = height * baseMushafScale
-    const quranCenterX = safeLeft + safeWidth * (visual.quranX / 100)
-    const quranCenterY = safeTop + safeHeight * (visual.quranY / 100)
-    ctx.translate(quranCenterX, quranCenterY)
-    ctx.scale(baseMushafScale * (visual.quranScale / 100), baseMushafScale * (visual.quranScale / 100))
-    ctx.translate(-mushafWidth / 2 / baseMushafScale, -mushafHeight / 2 / baseMushafScale)
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
     options.drawMushaf(ctx, width, height)
-    ctx.restore()
+
 
     if (options.translations?.length) {
       const blockWidth = safeWidth * 0.9 * (visual.translationScale / 100)
