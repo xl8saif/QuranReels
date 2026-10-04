@@ -7,7 +7,7 @@ import { mushafStyles, defaultMushafStyle, type MushafStyleId } from './mushafSt
 import { surahCatalog } from './surahCatalog'
 import { LiveMushafPreview } from './LiveMushafPreview'
 import { createAppRuntime } from './appRuntime'
-import type { ExportPanelOptions } from './exportPanel'
+import type { ExportPanelOptions } from './exportPanel'\nimport { useChapterPages } from './useChapterPages'
 
 function App() {
   const [surahNumber, setSurahNumber] = React.useState(1)
@@ -19,7 +19,7 @@ function App() {
   const exportCanvasRef = React.useRef<HTMLCanvasElement>(null)
   const audioRef = React.useRef<HTMLAudioElement>(null)
   const runtimeRef = React.useRef(createAppRuntime())
-  const selectedSurah = surahCatalog.find(s => s.number === surahNumber) ?? surahCatalog[0]
+  const selectedSurah = surahCatalog.find(s => s.number === surahNumber) ?? surahCatalog[0]\n  const { firstPage } = useChapterPages(surahNumber, mushafStyle)
 
   React.useEffect(() => () => {
     runtimeRef.current.destroy()
@@ -81,7 +81,7 @@ function App() {
       <section className="minimal-preview">
         <LiveMushafPreview
           styleId={mushafStyle}
-          page={1}
+          page={firstPage || 1}
           chapterNumber={surahNumber}
           highlight="#d9bd63"
           showFinger={false}
