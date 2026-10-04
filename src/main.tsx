@@ -6,6 +6,7 @@ import './mobile.css'
 import { mushafStyles, defaultMushafStyle, type MushafStyleId } from './mushafStyles'
 import { surahCatalog } from './surahCatalog'
 import { LiveMushafPreview } from './LiveMushafPreview'
+import { LiveRecitationControls } from './LiveRecitationControls'
 import { createAppRuntime } from './appRuntime'
 import type { ExportPanelOptions } from './exportPanel'
 import { useChapterPages } from './useChapterPages'
@@ -92,6 +93,10 @@ function App() {
           onStatus={setStatus}
           exportCanvasRef={exportCanvasRef}
         />
+      </section>
+
+      <section className="minimal-recitation" aria-label="Ahmad Al-Ajmy recitation">
+        <LiveRecitationControls chapterNumber={surahNumber} onStatus={setStatus} />
       </section>
 
       <section className="minimal-actions">
