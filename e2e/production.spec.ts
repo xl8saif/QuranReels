@@ -57,8 +57,9 @@ test.describe('published QuranReels site', () => {
     await expect(page.getByText('Surah', { exact: true })).toBeVisible()
     await expect(page.getByText('Mushaf', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Create video', exact: true })).toBeVisible()
-    await expect(page.getByText(/Ahmad Al-Ajmy/)).toBeVisible()
-    await expect(page.getByText('أحمد بن علي العجمي', { exact: true })).toBeVisible()
+    const recitationRegion = page.getByRole('region', { name: 'Ahmad Al-Ajmy recitation' })
+    await expect(recitationRegion.getByText('Ahmad Al-Ajmy', { exact: false }).first()).toBeVisible()
+    await expect(recitationRegion.getByText('أحمد بن علي العجمي', { exact: false }).first()).toBeVisible()
   })
 
   test('Surah selector exposes all 114 Quran chapters', async ({ page }) => {
@@ -71,19 +72,20 @@ test.describe('published QuranReels site', () => {
   })
 
   test('Ahmad Al-Ajmy recitation controls load and expose the expected source', async ({ page }) => {
-    await expect(page.getByText('Ahmad Al-Ajmy', { exact: false }).first()).toBeVisible()
-    await expect(page.getByText('أحمد بن علي العجمي', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Play recitation', exact: true })).toBeVisible()
-    await expect(page.getByRole('slider', { name: 'Recitation progress' })).toBeVisible()
+    const recitationRegion = page.getByRole('region', { name: 'Ahmad Al-Ajmy recitation' })
+    await expect(recitationRegion.getByText('Ahmad Al-Ajmy', { exact: false }).first()).toBeVisible()
+    await expect(recitationRegion.getByText('أحمد بن علي العجمي', { exact: false }).first()).toBeVisible()
+    await expect(recitationRegion.getByRole('button', { name: 'Play recitation', exact: true })).toBeVisible()
+    await expect(recitationRegion.getByRole('slider', { name: 'Recitation progress' })).toBeVisible()
 
-    const audio = page.locator('#qvm-export-audio')
+    const audio = recitationRegion.locator('#qvm-export-audio')
     await expect(audio).toHaveAttribute('src', /server10\.mp3quran\.net\/ajm\/001\.mp3/, { timeout: 30_000 })
   })
 
   test('Ahmad Al-Ajmy recitation switches with the selected Surah', async ({ page }) => {
     const surah = page.getByLabel('Surah')
     await surah.selectOption('2')
-    const audio = page.locator('#qvm-export-audio')
+    const audio = page.getByRole('region', { name: 'Ahmad Al-Ajmy recitation' }).locator('#qvm-export-audio')
     await expect(audio).toHaveAttribute('src', /server10\.mp3quran\.net\/ajm\/002\.mp3/, { timeout: 30_000 })
   })
 
