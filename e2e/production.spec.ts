@@ -20,9 +20,14 @@ test.describe('published QuranReels site', () => {
       }
     })
 
-    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+    const response = await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+    expect(response, 'Published site returned no navigation response').not.toBeNull()
+    expect(response?.status(), 'Published site HTTP status').toBe(200)
+    await expect(page.locator('#root')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByRole('heading', { name: 'Waraq Quran Reels', exact: true })).toBeVisible({ timeout: 30_000 })
-    await expect(page.locator('.app-shell')).toBeVisible()
+    await expect(page.locator('.app-shell')).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('.minimal-preview')).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('.minimal-recitation')).toBeVisible({ timeout: 30_000 })
     await page.waitForTimeout(2_000)
 
     expect(consoleErrors, `Browser console errors:\n${consoleErrors.join('\n')}`).toEqual([])
