@@ -2,7 +2,7 @@ name: Browser QA
 
 on:
   workflow_run:
-    workflows: [Deploy to Cloudflare]
+    workflows: [Deploy GitHub Pages]
     types: [completed]
   workflow_dispatch:
 
@@ -13,6 +13,8 @@ jobs:
   browser-qa:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BASE_URL: https://xl8saif.github.io/QuranReels/
     steps:
       - name: Checkout deployed commit
         uses: actions/checkout@v6
@@ -45,7 +47,7 @@ jobs:
       - name: Install Playwright
         run: npx playwright@1.62.1 install --with-deps chromium
 
-      - name: Run production browser QA
+      - name: Run published-site Browser QA
         run: npx playwright@1.62.1 test
 
       - name: Upload Playwright report
