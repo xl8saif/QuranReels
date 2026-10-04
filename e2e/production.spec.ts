@@ -20,7 +20,7 @@ test.describe('published QuranReels site', () => {
       }
     })
 
-    const response = await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+    const response = await page.goto('./', { waitUntil: 'domcontentloaded', timeout: 30_000 })
     expect(response, 'Published site returned no navigation response').not.toBeNull()
     expect(response?.status(), 'Published site HTTP status').toBe(200)
     await expect(page.locator('#root')).toBeVisible({ timeout: 30_000 })
