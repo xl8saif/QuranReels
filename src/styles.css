@@ -19,7 +19,7 @@
 .minimal-controls select{height:34px;padding:0 9px;background:#151b23;border:1px solid #2a3440;border-radius:6px;color:#e5e9ed;font-size:11px;outline:none}
 .minimal-page{height:34px;min-width:58px;justify-content:center;padding:0 9px;background:#151b23;border:1px solid #2a3440;border-radius:6px}
 .minimal-page strong{font-size:11px;color:#e5e9ed}
-.minimal-preview{display:flex;justify-content:center;min-height:0}
+.minimal-preview{display:flex;justify-content:center;width:100%;height:min(72vh,720px);min-height:520px;visibility:visible;opacity:1}
 .minimal-preview .live-preview-shell{width:min(430px,100%);height:min(72vh,720px);min-height:520px;position:relative;}
 .minimal-preview .quran-live-page{inset:4% 4%;}
 .minimal-preview .live-recitation-controls{padding:8px 0 0}
