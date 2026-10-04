@@ -8,10 +8,6 @@ type Props = {
   styleId: MushafStyleId
   page: number
   onPageChange: (page: number) => void
-  accessToken?: string
-  clientId?: string
-  activeVerse?: string
-  activeWordIndex?: number
   highlight: string
   showFinger?: boolean
   autoScroll?: boolean
@@ -20,19 +16,11 @@ type Props = {
   exportCanvasRef?: React.RefObject<HTMLCanvasElement | null>
 }
 
-/**
- * Composes chapter-aware page navigation with the existing live Mushaf renderer.
- * The parent remains responsible for the selected chapter and current page state.
- */
 export function MushafChapterView({
   chapterNumber,
   styleId,
   page,
   onPageChange,
-  accessToken,
-  clientId,
-  activeVerse,
-  activeWordIndex,
   highlight,
   showFinger,
   autoScroll,
@@ -51,10 +39,6 @@ export function MushafChapterView({
       <LiveMushafPreview
         styleId={styleId}
         page={page}
-        accessToken={accessToken}
-        clientId={clientId}
-        activeVerse={activeVerse}
-        activeWordIndex={activeWordIndex}
         highlight={highlight}
         showFinger={showFinger}
         autoScroll={autoScroll}
