@@ -12,6 +12,28 @@ OUTPUT = ROOT / "public/data/mushaf/page-map.json"
 SOURCE_URL = "https://qul.tarteel.ai/mushaf_layouts/6"
 EXPECTED_PAGES = 610
 
+class RowParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_row = False
+        self.current = ""
+        self.rows = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "tr":
+            self.in_row = True
+            self.current = ""
+
+    def handle_data(self, data):
+        if self.in_row:
+            self.current += data
+
+    def handle_endtag(self, tag):
+        if tag == "tr" and self.in_row:
+            self.rows.append([self.current])
+            self.in_row = False
+
+
 # QUL's Mushaf Layout table is the authoritative ayah-range index for the
 # Indopak 15-line Qudratullah layout. We intentionally do not estimate page
 # boundaries from word volume. The page images remain the existing published
