@@ -12,6 +12,10 @@ test.describe('published QuranReels site', () => {
     page.on('pageerror', error => pageErrors.push(error.message))
     page.on('requestfailed', request => {
       const failure = request.failure()?.errorText || 'unknown request failure'
+      // Chromium can abort an HTMLMediaElement request while changing/loading audio.
+      // The recitation source is verified separately below, so this benign media abort
+      // must not be treated as a broken published-site network dependency.
+      if (request.resourceType() === 'media' && failure === 'net::ERR_ABORTED') return
       failedRequests.push(`${request.method()} ${request.url()} — ${failure}`)
     })
     page.on('response', response => {
