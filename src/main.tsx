@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { Download, Play, Loader2 } from 'lucide-react'
 import './styles.css'
 import './mobile.css'
-import { mushafStyles, defaultMushafStyle, type MushafStyleId } from './mushafStyles'
+import type { MushafStyleId } from './mushafStyles'
 import { surahCatalog } from './surahCatalog'
 import { LiveMushafPreview } from './LiveMushafPreview'
 import { LiveRecitationControls } from './LiveRecitationControls'
@@ -13,7 +13,7 @@ import { useChapterPages } from './useChapterPages'
 
 function App() {
   const [surahNumber, setSurahNumber] = React.useState(1)
-  const [mushafStyle, setMushafStyle] = React.useState<MushafStyleId>(defaultMushafStyle)
+  const mushafStyle: MushafStyleId = 'indo-pak-muhammadi'
   const [status, setStatus] = React.useState('')
   const [exporting, setExporting] = React.useState(false)
   const [exportProgress, setExportProgress] = React.useState(0)
@@ -61,7 +61,7 @@ function App() {
     <header className="topbar minimal-topbar">
       <div className="title-block">
         <h1>Waraq Quran Reels</h1>
-        <div className="subtitle">{selectedSurah.arabic}</div>
+        <div className="subtitle">Indo-Pak Mushaf · Ahmad Al-Ajmy</div>
       </div>
     </header>
 
@@ -70,15 +70,10 @@ function App() {
         <label>
           <span>Surah</span>
           <select value={surahNumber} onChange={e => setSurahNumber(Number(e.target.value))}>
-            {surahCatalog.map(s => <option key={s.number} value={s.number}>{s.number}. {s.name} — {s.arabic}</option>)}
+            {surahCatalog.map(s => <option key={s.number} value={s.number}>{s.number}. {s.name}</option>)}
           </select>
         </label>
-        <label>
-          <span>Mushaf</span>
-          <select value={mushafStyle} onChange={e => setMushafStyle(e.target.value as MushafStyleId)}>
-            {mushafStyles.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-        </label>
+        <div className="minimal-page" aria-label="Mushaf format"><span>Mushaf</span><strong>Indo-Pak 15-line</strong></div>
       </section>
 
       <section className="minimal-preview">
